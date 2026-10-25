@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app";
 import { ConfigError, loadConfig } from "./config";
-import { createDatabase } from "./database/database";
+import { closeDatabase, createDatabase } from "./database/database";
 import { UpdateRequiredError } from "./database/migrations";
 
 // Resolved from this file, which sits one level below the package root both as
@@ -24,12 +24,12 @@ async function main() {
 
     // Cloud Run sends SIGTERM before it stops an instance, as does `docker compose down`.
     const shutDown = () => {
-      server.close(() => void database.$client.end());
+      server.close(() => void closeDatabase(database));
     };
     process.once("SIGTERM", shutDown);
     process.once("SIGINT", shutDown);
   } catch (error) {
-    await database.$client.end();
+    await closeDatabase(database);
     throw error;
   }
 }

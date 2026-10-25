@@ -3,18 +3,21 @@ import { readMigrationFiles } from "drizzle-orm/migrator";
 import type { Database } from "./database";
 
 export class UpdateRequiredError extends Error {
+  override name = "UpdateRequiredError";
+
   constructor() {
     super(
       "Update required: this database has been migrated by a newer version of job-tracker. " +
         "Update this copy to the latest version, then start it again.",
     );
-    this.name = "UpdateRequiredError";
   }
 }
 
 /**
  * Applies the migrations in `migrationsFolder` that the database hasn't had yet. Records them
  * in Drizzle's own `drizzle.__drizzle_migrations` table, so `drizzle-kit` stays compatible.
+ * As in Drizzle, migrations are ordered by the timestamp drizzle-kit gives each one, so a
+ * database whose latest migration is newer than any this build has came from a newer build.
  */
 export async function migrateDatabase(database: Database, migrationsFolder: string): Promise<void> {
   const migrations = readMigrationFiles({ migrationsFolder });

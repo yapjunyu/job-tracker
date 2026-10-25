@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { HealthResponse } from "@job-tracker/shared";
+import { Health } from "@job-tracker/shared";
 
 const health = createRoute({
   method: "get",
@@ -10,11 +10,11 @@ const health = createRoute({
   responses: {
     200: {
       description: "The app is ready for requests",
-      content: { "application/json": { schema: HealthResponse } },
+      content: { "application/json": { schema: Health } },
     },
   },
 });
 
 export const healthRoutes = new OpenAPIHono().openapi(health, (c) =>
-  c.json({ status: "ok" as const }, 200),
+  c.json({ ok: true as const }, 200),
 );

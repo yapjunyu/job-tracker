@@ -7,5 +7,5 @@ it("tells Cloud Run's startup probe the app is ready once it has started", async
   const response = await app.request("/api/health");
 
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ status: "ok" });
+  expect(await response.json()).toEqual({ ok: true });
 });

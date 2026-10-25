@@ -1,4 +1,4 @@
 import { z } from "zod";
 
-export const HealthResponse = z.object({ status: z.literal("ok") }).meta({ id: "HealthResponse" });
-export type HealthResponse = z.infer<typeof HealthResponse>;
+export const Health = z.object({ ok: z.literal(true) }).meta({ id: "Health" });
+export type Health = z.infer<typeof Health>;

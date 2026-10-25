@@ -15,7 +15,7 @@ it("publishes an OpenAPI spec generated from the shared Zod schemas", async () =
           responses: {
             200: {
               content: {
-                "application/json": { schema: { $ref: "#/components/schemas/HealthResponse" } },
+                "application/json": { schema: { $ref: "#/components/schemas/Health" } },
               },
             },
           },
@@ -24,10 +24,10 @@ it("publishes an OpenAPI spec generated from the shared Zod schemas", async () =
     },
     components: {
       schemas: {
-        HealthResponse: {
+        Health: {
           type: "object",
-          properties: { status: { type: "string", enum: ["ok"] } },
-          required: ["status"],
+          properties: { ok: { type: "boolean", enum: [true] } },
+          required: ["ok"],
         },
       },
     },

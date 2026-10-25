@@ -14,21 +14,22 @@ function Home() {
         <p className="text-balance text-muted-foreground">
           Every Application, from Saved to Offer, in one place. Coming soon.
         </p>
-        <ApiStatus />
+        <ApiConnection />
       </div>
     </main>
   );
 }
 
-const statusCopy = {
+// Keyed by TanStack Query's request state, not an Application's Status.
+const connectionCopy = {
   pending: { label: "Connecting to the API…", dot: "bg-muted-foreground animate-pulse" },
   success: { label: "Connected to the API", dot: "bg-emerald-500" },
   error: { label: "Can't reach the API", dot: "bg-destructive" },
 } as const;
 
-function ApiStatus() {
-  const { status } = useQuery(healthQuery);
-  const { label, dot } = statusCopy[status];
+function ApiConnection() {
+  const health = useQuery(healthQuery);
+  const { label, dot } = connectionCopy[health.status];
 
   return (
     <p role="status" className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">

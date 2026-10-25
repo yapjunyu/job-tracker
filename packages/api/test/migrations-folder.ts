@@ -1,7 +1,6 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { onTestFinished } from "vitest";
+import { createTempFolder } from "./temp-folder";
 
 export interface Migration {
   tag: string;
@@ -12,9 +11,7 @@ export interface Migration {
 
 /** Writes migrations in the layout `drizzle-kit generate` produces, standing in for a build of the app. */
 export async function writeMigrationsFolder(migrations: Migration[]): Promise<string> {
-  const folder = await mkdtemp(join(tmpdir(), "job-tracker-migrations-"));
-  onTestFinished(() => rm(folder, { recursive: true, force: true }));
-
+  const folder = await createTempFolder();
   await mkdir(join(folder, "meta"));
   const journal = {
     version: "7",

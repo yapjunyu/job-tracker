@@ -9,3 +9,8 @@ export function createDatabase(url: string) {
 }
 
 export type Database = ReturnType<typeof createDatabase>;
+
+/** Closes the database's connections, letting the process exit. */
+export async function closeDatabase(database: Database): Promise<void> {
+  await database.$client.end();
+}

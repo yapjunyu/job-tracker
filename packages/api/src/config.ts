@@ -36,8 +36,8 @@ export class ConfigError extends Error {
 /** Reads configuration from environment variables; see `.env.example` for what each one does. */
 export function loadConfig(env: Record<string, string | undefined>): Config {
   // A variable left empty in .env means "not set", so its default applies.
-  const setVariables = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ""));
-  const parsed = Environment.safeParse(setVariables);
+  const nonEmptyEnv = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ""));
+  const parsed = Environment.safeParse(nonEmptyEnv);
   if (!parsed.success) {
     throw new ConfigError(`Invalid configuration:\n${z.prettifyError(parsed.error)}`);
   }

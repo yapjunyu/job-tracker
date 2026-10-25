@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { inject, onTestFinished } from "vitest";
 import { createApp, type AppConfig, type AppDependencies } from "../src/app";
-import { createDatabase } from "../src/database/database";
+import { closeDatabase, createDatabase } from "../src/database/database";
 
 export interface TestAppOverrides {
   config?: Partial<AppConfig>;
@@ -30,7 +30,7 @@ export async function createTestDatabaseUrl(): Promise<string> {
 /** Starts the app through the same factory production uses, against the given database. */
 export async function startApp(databaseUrl: string, overrides: TestAppOverrides = {}) {
   const database = createDatabase(databaseUrl);
-  onTestFinished(() => database.$client.end());
+  onTestFinished(() => closeDatabase(database));
   return createApp(
     {
       inviteList: null,
