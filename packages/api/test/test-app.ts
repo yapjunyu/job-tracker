@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { inject, onTestFinished } from "vitest";
@@ -11,6 +11,7 @@ export interface TestAppOverrides {
 }
 
 const migrationsFolder = fileURLToPath(new URL("../drizzle", import.meta.url));
+const authSecret = randomBytes(32).toString("base64");
 
 /** A new, empty database in the shared Postgres container, so no test sees another's data. */
 export async function createTestDatabaseUrl(): Promise<string> {
@@ -33,6 +34,8 @@ export async function startApp(databaseUrl: string, overrides: TestAppOverrides 
   onTestFinished(() => closeDatabase(database));
   return createApp(
     {
+      authSecret,
+      appUrl: null,
       inviteList: null,
       extractionDailyCap: 20,
       migrationsFolder,
@@ -47,3 +50,5 @@ export async function startApp(databaseUrl: string, overrides: TestAppOverrides 
 export async function startTestApp(overrides: TestAppOverrides = {}) {
   return startApp(await createTestDatabaseUrl(), overrides);
 }
+
+export type TestApp = Awaited<ReturnType<typeof startApp>>;

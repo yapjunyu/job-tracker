@@ -15,6 +15,7 @@
     "@hono/zod-openapi": "^1.6.3",
     "@job-tracker/shared": "workspace:*",
     "ai": "^7.0.152",
+    "better-auth": "catalog:",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "postgres": "^3.4.9",
