@@ -32,6 +32,13 @@ export default defineConfig(
     files: ["packages/web/src/**/*.{ts,tsx}"],
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },
+    rules: {
+      // TanStack Router's redirects are made to be thrown.
+      "@typescript-eslint/only-throw-error": [
+        "error",
+        { allow: [{ from: "package", package: "@tanstack/router-core", name: "Redirect" }] },
+      ],
+    },
   },
   {
     // Route files export a `Route`, and the router plugin splits out their components for hot

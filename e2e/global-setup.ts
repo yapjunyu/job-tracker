@@ -1,4 +1,5 @@
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
+import { randomBytes } from "node:crypto";
 import { GenericContainer, Network, Wait } from "testcontainers";
 
 /**
@@ -16,7 +17,7 @@ export default async function startApp() {
 
   const app = await new GenericContainer(image)
     .withNetwork(network)
-    .withEnvironment({ DATABASE_URL: databaseUrl })
+    .withEnvironment({ DATABASE_URL: databaseUrl, AUTH_SECRET: randomBytes(32).toString("base64") })
     .withExposedPorts(3000)
     .withWaitStrategy(Wait.forHttp("/api/health", 3000))
     // The app's own output, so a failure to start shows why, not just a timeout.

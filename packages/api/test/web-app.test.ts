@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { signUpSomeone } from "./accounts";
 import { createTempFolder } from "./temp-folder";
 import { startTestApp } from "./test-app";
 
@@ -56,8 +57,9 @@ describe("serving the web app", () => {
 
   it("answers an unknown API path with 404 rather than the HTML entry point", async () => {
     const app = await startAppWithWebApp();
+    const cookie = await signUpSomeone(app);
 
-    const response = await app.request("/api/no-such-endpoint");
+    const response = await app.request("/api/no-such-endpoint", { headers: { Cookie: cookie } });
 
     expect(response.status).toBe(404);
   });

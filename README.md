@@ -17,10 +17,15 @@ pnpm dev
 
 ```bash
 cp .env.example .env
+```
+
+Set `AUTH_SECRET` in `.env` (the file says how to generate one), then:
+
+```bash
 docker compose up
 ```
 
-The app is then on http://localhost:3000, served by one image that holds both the API and the built web app. The example environment file starts a local Postgres too; to use your own database, remove `COMPOSE_PROFILES` and set `DATABASE_URL`.
+The app is then on http://localhost:3000, served by one image that holds both the API and the built web app. The example environment file starts a local Postgres too; to use your own database, remove `COMPOSE_PROFILES` and set `DATABASE_URL`. Anyone who can reach the app can sign up unless you set `INVITE_LIST`.
 
 ## Checks
 

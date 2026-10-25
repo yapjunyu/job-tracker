@@ -9,50 +9,140 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as SignedOutRouteImport } from './routes/_signed-out'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as SignedOutSignInRouteImport } from './routes/_signed-out/sign-in'
+import { Route as SignedOutSignUpRouteImport } from './routes/_signed-out/sign-up'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignedOutRoute = SignedOutRouteImport.update({
+  id: '/_signed-out',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const SignedOutSignInRoute = SignedOutSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => SignedOutRoute,
+} as any)
+const SignedOutSignUpRoute = SignedOutSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => SignedOutRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/sign-in': typeof SignedOutSignInRoute
+  '/sign-up': typeof SignedOutSignUpRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/sign-in': typeof SignedOutSignInRoute
+  '/sign-up': typeof SignedOutSignUpRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_signed-out': typeof SignedOutRouteWithChildren
+  '/_signed-out/sign-in': typeof SignedOutSignInRoute
+  '/_signed-out/sign-up': typeof SignedOutSignUpRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/sign-in' | '/sign-up'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/sign-in' | '/sign-up'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_signed-out'
+    | '/_signed-out/sign-in'
+    | '/_signed-out/sign-up'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  SignedOutRoute: typeof SignedOutRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_signed-out': {
+      id: '/_signed-out'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof SignedOutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_signed-out/sign-in': {
+      id: '/_signed-out/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignedOutSignInRouteImport
+      parentRoute: typeof SignedOutRoute
+    }
+    '/_signed-out/sign-up': {
+      id: '/_signed-out/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignedOutSignUpRouteImport
+      parentRoute: typeof SignedOutRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface SignedOutRouteChildren {
+  SignedOutSignInRoute: typeof SignedOutSignInRoute
+  SignedOutSignUpRoute: typeof SignedOutSignUpRoute
+}
+
+const SignedOutRouteChildren: SignedOutRouteChildren = {
+  SignedOutSignInRoute: SignedOutSignInRoute,
+  SignedOutSignUpRoute: SignedOutSignUpRoute,
+}
+
+const SignedOutRouteWithChildren = SignedOutRoute._addFileChildren(
+  SignedOutRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  SignedOutRoute: SignedOutRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
