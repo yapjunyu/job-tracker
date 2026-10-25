@@ -1,0 +1,2 @@
+-- Baseline: starts the migration history, so every later migration has something to follow
+-- and an older build can tell when the database is ahead of it. Tables arrive with later migrations.

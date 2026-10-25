@@ -1,0 +1,36 @@
+{
+  "name": "job-tracker",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "docker compose --profile local-db up --detach --wait postgres && pnpm --recursive --parallel dev",
+    "build": "pnpm --recursive build",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm --recursive typecheck && tsc --noEmit",
+    "test": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
+    "test:unit": "pnpm --filter @job-tracker/shared test",
+    "test:integration": "pnpm --filter @job-tracker/api test",
+    "test:e2e": "pnpm e2e:image && playwright test",
+    "e2e:image": "docker build --tag job-tracker:e2e ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "@testcontainers/postgresql": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "testcontainers": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.72.0"
+  }
+}
