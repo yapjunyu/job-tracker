@@ -1,0 +1,45 @@
+name: job-tracker
+
+services:
+  app:
+    build: .
+    image: job-tracker:local
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Optional local database: enable with `--profile local-db`, or COMPOSE_PROFILES=local-db in .env.
+  # `pnpm dev` uses it too, through the port published on localhost.
+  postgres:
+    image: postgres:17-alpine
+    profiles: [local-db]
+    environment:
+      POSTGRES_USER: jobtracker
+      POSTGRES_PASSWORD: jobtracker
+      POSTGRES_DB: jobtracker
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=jobtracker --dbname=jobtracker"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
