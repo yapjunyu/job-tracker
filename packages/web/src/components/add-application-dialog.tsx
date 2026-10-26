@@ -29,8 +29,9 @@ export function AddApplicationDialog({ trigger }: { trigger: ReactElement }) {
           </DialogDescription>
         </DialogHeader>
         <ApplicationForm
+          mode="add"
           pending={addApplication.isPending}
-          onAdd={(details) => {
+          onSubmit={(details) => {
             addApplication.mutate(details);
             setOpen(false);
           }}

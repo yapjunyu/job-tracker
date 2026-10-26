@@ -58,24 +58,33 @@ export type Application = z.infer<typeof Application>;
 export const InitialStatus = Status.extract(["saved", "applied"]);
 export type InitialStatus = z.infer<typeof InitialStatus>;
 
+const detailFields = {
+  roleTitle: z.string().trim().min(1, "Enter the role title.").max(200),
+  companyName: z.string().trim().min(1, "Enter the company name.").max(200),
+  source: Source.nullable().default(null),
+  postingLink: z
+    .url({ protocol: /^https?$/, error: "Enter a link starting with http:// or https://." })
+    .max(2000)
+    .nullable()
+    .default(null),
+  location: z.string().trim().max(200).nullable().default(null),
+  pay: z.string().trim().max(200).nullable().default(null),
+  jobDescription: z.string().max(20_000).nullable().default(null),
+};
+
+/**
+ * What the edit form sends: every detail of an Application, all of it at once, with a field
+ * the job seeker left blank arriving as `null`. The Status is not a detail; it is wherever
+ * the Application's Status Changes put it.
+ */
+export const ApplicationDetails = z.object(detailFields).meta({ id: "ApplicationDetails" });
+export type ApplicationDetails = z.infer<typeof ApplicationDetails>;
+
 /**
  * What the add form sends. Only the role title, the company name and the starting Status are
  * asked for; a field the job seeker left blank arrives as `null`.
  */
 export const NewApplication = z
-  .object({
-    roleTitle: z.string().trim().min(1, "Enter the role title.").max(200),
-    companyName: z.string().trim().min(1, "Enter the company name.").max(200),
-    status: InitialStatus,
-    source: Source.nullable().default(null),
-    postingLink: z
-      .url({ protocol: /^https?$/, error: "Enter a link starting with http:// or https://." })
-      .max(2000)
-      .nullable()
-      .default(null),
-    location: z.string().trim().max(200).nullable().default(null),
-    pay: z.string().trim().max(200).nullable().default(null),
-    jobDescription: z.string().max(20_000).nullable().default(null),
-  })
+  .object({ ...detailFields, status: InitialStatus })
   .meta({ id: "NewApplication" });
 export type NewApplication = z.infer<typeof NewApplication>;

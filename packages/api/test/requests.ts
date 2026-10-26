@@ -4,9 +4,14 @@ import type { TestApp } from "./test-app";
 // refuses sign-ins and signed-in changes from any other origin.
 const origin = "http://localhost";
 
-export function post(app: TestApp, path: string, options: { body?: object; cookie?: string } = {}) {
+function send(
+  app: TestApp,
+  method: string,
+  path: string,
+  options: { body?: object; cookie?: string } = {},
+) {
   return app.request(path, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       Origin: origin,
@@ -16,6 +21,18 @@ export function post(app: TestApp, path: string, options: { body?: object; cooki
   });
 }
 
+export function post(app: TestApp, path: string, options: { body?: object; cookie?: string } = {}) {
+  return send(app, "POST", path, options);
+}
+
+export function put(app: TestApp, path: string, options: { body?: object; cookie?: string } = {}) {
+  return send(app, "PUT", path, options);
+}
+
 export function get(app: TestApp, path: string, cookie: string) {
   return app.request(path, { headers: { Cookie: cookie } });
+}
+
+export function remove(app: TestApp, path: string, cookie: string) {
+  return app.request(path, { method: "DELETE", headers: { Origin: origin, Cookie: cookie } });
 }

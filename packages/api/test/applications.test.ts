@@ -1,13 +1,18 @@
+import type { Application } from "@job-tracker/shared";
+import postgres from "postgres";
 import { describe, expect, it } from "vitest";
 import { signUpSomeone } from "./accounts";
 import {
   addApplication,
   addApplicationOrThrow,
+  applicationDetails,
+  deleteApplication,
+  editApplication,
   getApplication,
   listApplications,
   newApplication,
 } from "./applications";
-import { startTestApp } from "./test-app";
+import { createTestDatabaseUrl, startApp, startTestApp } from "./test-app";
 
 describe("applications", () => {
   it("adds an Application and shows it in the table", async () => {
@@ -192,5 +197,210 @@ describe("one job seeker's Applications are private to them", () => {
     const response = await getApplication(app, cookie, "00000000-0000-4000-8000-000000000000");
 
     expect(response.status).toBe(404);
+  });
+
+  it("never edits another job seeker's Application", async () => {
+    const app = await startTestApp();
+    const mine = await signUpSomeone(app);
+    const theirs = await signUpSomeone(app);
+    const theirApplication = await addApplicationOrThrow(app, theirs);
+
+    const edited = await editApplication(
+      app,
+      mine,
+      theirApplication.id,
+      applicationDetails({ roleTitle: "Mine now" }),
+    );
+
+    expect(edited.status).toBe(404);
+    await expect((await getApplication(app, theirs, theirApplication.id)).json()).resolves.toEqual(
+      theirApplication,
+    );
+  });
+
+  it("never deletes another job seeker's Application", async () => {
+    const app = await startTestApp();
+    const mine = await signUpSomeone(app);
+    const theirs = await signUpSomeone(app);
+    const theirApplication = await addApplicationOrThrow(app, theirs);
+
+    const deleted = await deleteApplication(app, mine, theirApplication.id);
+
+    expect(deleted.status).toBe(404);
+    expect((await getApplication(app, theirs, theirApplication.id)).status).toBe(200);
+  });
+});
+
+describe("editing an Application", () => {
+  it("replaces the details the job seeker sends", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const { id } = await addApplicationOrThrow(
+      app,
+      cookie,
+      newApplication({ roleTitle: "Backend Intern" }),
+    );
+
+    const edited = await editApplication(
+      app,
+      cookie,
+      id,
+      applicationDetails({ roleTitle: "Backend Engineer Intern", location: "Singapore" }),
+    );
+
+    expect(edited.status).toBe(200);
+    expect(await (await getApplication(app, cookie, id)).json()).toMatchObject({
+      roleTitle: "Backend Engineer Intern",
+      location: "Singapore",
+    });
+  });
+
+  it("clears a detail the job seeker emptied, since the form sends every detail at once", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const { id } = await addApplicationOrThrow(
+      app,
+      cookie,
+      newApplication({ location: "Singapore", pay: "SGD 3,000/month" }),
+    );
+
+    await editApplication(app, cookie, id, applicationDetails({ pay: "SGD 3,500/month" }));
+
+    expect(await (await getApplication(app, cookie, id)).json()).toMatchObject({
+      location: null,
+      pay: "SGD 3,500/month",
+    });
+  });
+
+  it("moves the Application to the Company the job seeker named, creating a new one", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const added = await addApplicationOrThrow(app, cookie, newApplication({ companyName: "Grab" }));
+
+    await editApplication(app, cookie, added.id, applicationDetails({ companyName: "Shopee" }));
+
+    const edited = (await (await getApplication(app, cookie, added.id)).json()) as Application;
+    expect(edited.company.name).toBe("Shopee");
+    expect(edited.company.id).not.toBe(added.company.id);
+  });
+
+  it("reuses a Company whose name matches ignoring letter case", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const added = await addApplicationOrThrow(
+      app,
+      cookie,
+      newApplication({ companyName: "Shopee" }),
+    );
+
+    await editApplication(app, cookie, added.id, applicationDetails({ companyName: "shopee" }));
+
+    expect(await (await getApplication(app, cookie, added.id)).json()).toMatchObject({
+      company: added.company,
+    });
+  });
+
+  it("leaves the Status and the Status history where the Status Changes put them", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const added = await addApplicationOrThrow(app, cookie, newApplication({ status: "applied" }));
+
+    await editApplication(app, cookie, added.id, applicationDetails({ roleTitle: "Another" }));
+
+    expect(await (await getApplication(app, cookie, added.id)).json()).toMatchObject({
+      status: "applied",
+      statusChangedAt: added.statusChangedAt,
+      statusChanges: added.statusChanges,
+    });
+  });
+
+  it("refuses an edit the shared schema rejects, and changes nothing", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const added = await addApplicationOrThrow(app, cookie);
+
+    const edited = await editApplication(
+      app,
+      cookie,
+      added.id,
+      applicationDetails({ postingLink: "not-a-link" }),
+    );
+
+    expect(edited.status).toBe(400);
+    await expect((await getApplication(app, cookie, added.id)).json()).resolves.toEqual(added);
+  });
+
+  it("answers 404 for an Application that doesn't exist", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+
+    const edited = await editApplication(
+      app,
+      cookie,
+      "00000000-0000-4000-8000-000000000000",
+      applicationDetails(),
+    );
+
+    expect(edited.status).toBe(404);
+  });
+});
+
+describe("deleting an Application", () => {
+  it("removes it for good, taking its Status Changes with it", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const { id } = await addApplicationOrThrow(app, cookie);
+
+    const deleted = await deleteApplication(app, cookie, id);
+
+    // Status Changes reference the Application, so the delete could only succeed by taking
+    // them with it; afterwards nothing the API offers can reach the Application at all.
+    expect(deleted.status).toBe(204);
+    expect((await getApplication(app, cookie, id)).status).toBe(404);
+    await expect((await listApplications(app, cookie)).json()).resolves.toEqual([]);
+  });
+
+  it("leaves the job seeker's other Applications alone", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const keeping = await addApplicationOrThrow(app, cookie, newApplication({ roleTitle: "Keep" }));
+    const going = await addApplicationOrThrow(app, cookie, newApplication({ roleTitle: "Go" }));
+
+    await deleteApplication(app, cookie, going.id);
+
+    expect(await (await listApplications(app, cookie)).json()).toMatchObject([
+      { id: keeping.id, roleTitle: "Keep" },
+    ]);
+  });
+
+  it("leaves none of its Status Changes behind, since deleting is permanent", async () => {
+    const databaseUrl = await createTestDatabaseUrl();
+    const app = await startApp(databaseUrl);
+    const cookie = await signUpSomeone(app);
+    const { id } = await addApplicationOrThrow(app, cookie);
+    // Nothing the API offers can reach a deleted Application's rows, and there is no archive,
+    // so this one test looks straight at the table to see that they really went.
+    const sql = postgres(databaseUrl, { max: 1 });
+
+    try {
+      const before = await sql`select id from status_changes where application_id = ${id}`;
+      expect(before).toHaveLength(1);
+
+      await deleteApplication(app, cookie, id);
+
+      const after = await sql`select id from status_changes where application_id = ${id}`;
+      expect(after).toHaveLength(0);
+    } finally {
+      await sql.end();
+    }
+  });
+
+  it("answers 404 for an Application that doesn't exist, so a second delete says so", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    const { id } = await addApplicationOrThrow(app, cookie);
+    await deleteApplication(app, cookie, id);
+
+    expect((await deleteApplication(app, cookie, id)).status).toBe(404);
   });
 });

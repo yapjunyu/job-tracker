@@ -1,15 +1,15 @@
-import type { Application, NewApplication } from "@job-tracker/shared";
-import { get, post } from "./requests";
+import type { Application, ApplicationDetails, NewApplication } from "@job-tracker/shared";
+import { get, post, put, remove } from "./requests";
 import type { TestApp } from "./test-app";
+
+/** The least an edit form can send. An Application's Status is not a detail, so it isn't here. */
+export function applicationDetails(overrides: Partial<ApplicationDetails> = {}) {
+  return { roleTitle: "Software Engineer Intern", companyName: "Shopee", ...overrides };
+}
 
 /** The least an add form can send: everything else about an Application is optional. */
 export function newApplication(overrides: Partial<NewApplication> = {}) {
-  return {
-    roleTitle: "Software Engineer Intern",
-    companyName: "Shopee",
-    status: "saved",
-    ...overrides,
-  };
+  return { ...applicationDetails(), status: "saved", ...overrides };
 }
 
 export function addApplication(app: TestApp, cookie: string, body: object) {
@@ -22,6 +22,14 @@ export function listApplications(app: TestApp, cookie: string) {
 
 export function getApplication(app: TestApp, cookie: string, id: string) {
   return get(app, `/api/applications/${id}`, cookie);
+}
+
+export function editApplication(app: TestApp, cookie: string, id: string, body: object) {
+  return put(app, `/api/applications/${id}`, { body, cookie });
+}
+
+export function deleteApplication(app: TestApp, cookie: string, id: string) {
+  return remove(app, `/api/applications/${id}`, cookie);
 }
 
 /** Adds an Application and returns it as the API gave it back, failing the test if it didn't. */
