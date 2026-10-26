@@ -1,7 +1,9 @@
 // Drizzle table definitions. Tables arrive with the tickets that need them; run
 // `pnpm --filter @job-tracker/api db:generate` after changing this file.
 // Migrations are additive only: never rename or drop a table or column.
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { Source, Status } from "@job-tracker/shared";
+import { sql } from "drizzle-orm";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -68,4 +70,67 @@ export const verifications = pgTable(
     ...timestamps,
   },
   (table) => [index().on(table.identifier)],
+);
+
+// Drizzle wants a non-empty tuple of the allowed values; Zod gives the same values as an array.
+const statusValues = Status.options as [Status, ...Status[]];
+const sourceValues = Source.options as [Source, ...Source[]];
+
+export const companies = pgTable(
+  "companies",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: text()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    // One Company per name per user, so "shopee" and "Shopee" never become two.
+    uniqueIndex("companies_user_id_lower_name_unique").on(table.userId, sql`lower(${table.name})`),
+  ],
+);
+
+export const applications = pgTable(
+  "applications",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: text()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    companyId: uuid()
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    roleTitle: text().notNull(),
+    jobDescription: text(),
+    postingLink: text(),
+    location: text(),
+    pay: text(),
+    source: text({ enum: sourceValues }),
+    // The current Status and the time of the latest Status Change, for sorting and filtering.
+    // Both follow the Application's Status Changes, written in the same transaction as every
+    // Status Change; see `syncCurrentStatus`.
+    currentStatus: text({ enum: statusValues }).notNull(),
+    statusChangedAt: timestamp({ withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [index().on(table.userId)],
+);
+
+/** An Application's history. Deleting the Application takes its Status Changes with it. */
+export const statusChanges = pgTable(
+  "status_changes",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    applicationId: uuid()
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    status: text({ enum: statusValues }).notNull(),
+    /** When the Application moved to this Status. */
+    occurredAt: timestamp({ withTimezone: true }).notNull(),
+    /** When the move was written down, which is also when this row was created. */
+    recordedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index().on(table.applicationId)],
 );

@@ -33,10 +33,15 @@ export default defineConfig(
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },
     rules: {
-      // TanStack Router's redirects are made to be thrown.
+      // TanStack Router's redirects and not-found signals are made to be thrown.
       "@typescript-eslint/only-throw-error": [
         "error",
-        { allow: [{ from: "package", package: "@tanstack/router-core", name: "Redirect" }] },
+        {
+          allow: [
+            { from: "package", package: "@tanstack/router-core", name: "Redirect" },
+            { from: "package", package: "@tanstack/router-core", name: "NotFoundError" },
+          ],
+        },
       ],
     },
   },

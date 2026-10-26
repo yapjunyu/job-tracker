@@ -3,6 +3,7 @@ import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-
 import { signOut } from "@/api/auth";
 import { meQuery } from "@/api/me";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 // The app's own pages live under this route, so only a signed-in user ever sees them.
 export const Route = createFileRoute("/_app")({
@@ -29,6 +30,7 @@ function AppShell() {
         </div>
       </header>
       <Outlet />
+      <Toaster position="bottom-right" />
     </div>
   );
 }

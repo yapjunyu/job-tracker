@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { post } from "./requests";
 import type { TestApp } from "./test-app";
 
 export interface Credentials {
@@ -9,22 +10,6 @@ export interface Credentials {
 /** An email address nobody has signed up with yet, and a password for it. */
 export function newCredentials(email = `${randomUUID()}@example.com`): Credentials {
   return { email, password: "correct horse battery staple" };
-}
-
-// Requests come from the app's own origin, as the web app's do in a browser. Better Auth
-// refuses sign-ins and signed-in changes from any other origin.
-const origin = "http://localhost";
-
-function post(app: TestApp, path: string, options: { body?: object; cookie?: string } = {}) {
-  return app.request(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Origin: origin,
-      ...(options.cookie ? { Cookie: options.cookie } : {}),
-    },
-    body: JSON.stringify(options.body ?? {}),
-  });
 }
 
 export function signUp(app: TestApp, credentials: Credentials) {
