@@ -13,11 +13,11 @@ async function signUp(page: Page): Promise<string> {
   return email;
 }
 
-test("a new job seeker signs up and lands on the empty app shell", async ({ page }) => {
+test("a new job seeker signs up and lands on an app with nothing in it yet", async ({ page }) => {
   const email = await signUp(page);
 
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "No Applications yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing tracked yet." })).toBeVisible();
   await expect(page.getByText(email)).toBeVisible();
 });
 
@@ -42,5 +42,5 @@ test("a job seeker signs out, and signs back in with their email and password", 
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "No Applications yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing tracked yet." })).toBeVisible();
 });

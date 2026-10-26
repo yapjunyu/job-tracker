@@ -1,5 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { LanguageModel } from "ai";
+import { applicationRoutes } from "./applications";
 import { createAuth } from "./auth";
 import type { Database } from "./database/database";
 import { migrateDatabase } from "./database/migrations";
@@ -49,6 +50,7 @@ export async function createApp(config: AppConfig, dependencies: AppDependencies
   // answers the first request it matches, so the routes above never reach this check.
   app.use("/api/*", auth.requireSignIn);
   app.route("/api", meRoutes);
+  app.route("/api", applicationRoutes(dependencies.database));
 
   if (config.webDistDir) {
     app.route("/", webApp(config.webDistDir));
