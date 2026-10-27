@@ -4,21 +4,10 @@ import {
   type ApplicationDetails,
   type NewApplication,
 } from "@job-tracker/shared";
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-/** What the API said went wrong, or `fallback` when it didn't say. */
-async function failureMessage(response: Response, fallback: string): Promise<string> {
-  try {
-    const body: unknown = await response.json();
-    if (body && typeof body === "object" && "message" in body && typeof body.message === "string") {
-      return body.message;
-    }
-  } catch {
-    // A response that isn't JSON has nothing to tell the job seeker.
-  }
-  return fallback;
-}
+import { applicationsKey, companiesKey } from "@/api/query-keys";
+import { failureMessage } from "@/api/failure-message";
 
 /**
  * A row of the table. A row still on its way to the server is marked `pending`: there is no
@@ -28,7 +17,7 @@ export type ApplicationRow = ApplicationSummary & { pending?: boolean };
 
 /** Every Application in the table, latest Status Change first. */
 export const applicationsQuery = queryOptions({
-  queryKey: ["applications"],
+  queryKey: applicationsKey,
   queryFn: async (): Promise<ApplicationRow[]> => {
     const response = await fetch("/api/applications");
     if (!response.ok) {
@@ -38,10 +27,22 @@ export const applicationsQuery = queryOptions({
   },
 });
 
+/**
+ * Refetches the table and everything about Companies. Adding, editing or deleting an
+ * Application can create a Company or change which Applications a Company view lists, and
+ * renaming a Company changes the name every Application at it shows.
+ */
+export function invalidateApplicationsAndCompanies(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey }),
+    queryClient.invalidateQueries({ queryKey: companiesKey }),
+  ]);
+}
+
 /** One Application with its Status history, or `null` when the job seeker has no such one. */
 export function applicationQuery(id: string) {
   return queryOptions({
-    queryKey: ["applications", id],
+    queryKey: [...applicationsKey, id],
     queryFn: async () => {
       const response = await fetch(`/api/applications/${id}`);
       if (response.status === 404) return null;
@@ -102,7 +103,7 @@ export function useAddApplication() {
       queryClient.setQueryData(applicationsQuery.queryKey, context?.previous ?? []);
       toast.error("That Application wasn't added.", { description: error.message });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey }),
+    onSettled: () => invalidateApplicationsAndCompanies(queryClient),
   });
 }
 
@@ -183,7 +184,7 @@ export function useEditApplication(id: string) {
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: detailKey }),
-        queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey }),
+        invalidateApplicationsAndCompanies(queryClient),
       ]);
     },
   });
@@ -221,6 +222,6 @@ export function useDeleteApplication(id: string) {
       if (context) queryClient.setQueryData(applicationsQuery.queryKey, context.previous);
       toast.error("That Application wasn't deleted.", { description: error.message });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey }),
+    onSettled: () => invalidateApplicationsAndCompanies(queryClient),
   });
 }

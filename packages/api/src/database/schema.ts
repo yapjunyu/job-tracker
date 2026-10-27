@@ -76,6 +76,9 @@ export const verifications = pgTable(
 const statusValues = Status.options as [Status, ...Status[]];
 const sourceValues = Source.options as [Source, ...Source[]];
 
+/** The index that keeps a user's Company names unique ignoring case. */
+export const companyNameUniqueIndex = "companies_user_id_lower_name_unique";
+
 export const companies = pgTable(
   "companies",
   {
@@ -88,7 +91,7 @@ export const companies = pgTable(
   },
   (table) => [
     // One Company per name per user, so "shopee" and "Shopee" never become two.
-    uniqueIndex("companies_user_id_lower_name_unique").on(table.userId, sql`lower(${table.name})`),
+    uniqueIndex(companyNameUniqueIndex).on(table.userId, sql`lower(${table.name})`),
   ],
 );
 

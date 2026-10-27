@@ -16,6 +16,13 @@ export type Source = z.infer<typeof Source>;
 export const Company = z.object({ id: z.uuid(), name: z.string() }).meta({ id: "Company" });
 export type Company = z.infer<typeof Company>;
 
+/** A Company's name, as the add, edit and rename forms all ask for it. */
+export const CompanyName = z.string().trim().min(1, "Enter the company name.").max(200);
+
+/** What the rename form sends. */
+export const CompanyRename = z.object({ name: CompanyName }).meta({ id: "CompanyRename" });
+export type CompanyRename = z.infer<typeof CompanyRename>;
+
 /** A dated record that an Application moved to a Status. */
 export const StatusChange = z
   .object({
@@ -41,6 +48,12 @@ const summaryFields = {
 export const ApplicationSummary = z.object(summaryFields).meta({ id: "ApplicationSummary" });
 export type ApplicationSummary = z.infer<typeof ApplicationSummary>;
 
+/** A Company with every Application the job seeker has made there: the Company view. */
+export const CompanyWithApplications = Company.extend({
+  applications: z.array(ApplicationSummary),
+}).meta({ id: "CompanyWithApplications" });
+export type CompanyWithApplications = z.infer<typeof CompanyWithApplications>;
+
 /** One Application with its details and its Status history, newest Status Change first. */
 export const Application = z
   .object({
@@ -60,7 +73,7 @@ export type InitialStatus = z.infer<typeof InitialStatus>;
 
 const detailFields = {
   roleTitle: z.string().trim().min(1, "Enter the role title.").max(200),
-  companyName: z.string().trim().min(1, "Enter the company name.").max(200),
+  companyName: CompanyName,
   source: Source.nullable().default(null),
   postingLink: z
     .url({ protocol: /^https?$/, error: "Enter a link starting with http:// or https://." })

@@ -44,7 +44,13 @@ function ApplicationDetail() {
             </h1>
             <StatusBadge status={application.status} />
           </div>
-          <p className="text-muted-foreground">{application.company.name}</p>
+          <Link
+            to="/companies/$companyId"
+            params={{ companyId: application.company.id }}
+            className="self-start text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {application.company.name}
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <EditApplicationDialog

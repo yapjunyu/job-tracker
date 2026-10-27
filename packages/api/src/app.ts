@@ -2,6 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { LanguageModel } from "ai";
 import { applicationRoutes } from "./applications";
 import { createAuth } from "./auth";
+import { companyRoutes } from "./companies";
 import type { Database } from "./database/database";
 import { migrateDatabase } from "./database/migrations";
 import { healthRoutes } from "./health";
@@ -51,6 +52,7 @@ export async function createApp(config: AppConfig, dependencies: AppDependencies
   app.use("/api/*", auth.requireSignIn);
   app.route("/api", meRoutes);
   app.route("/api", applicationRoutes(dependencies.database));
+  app.route("/api", companyRoutes(dependencies.database));
 
   if (config.webDistDir) {
     app.route("/", webApp(config.webDistDir));

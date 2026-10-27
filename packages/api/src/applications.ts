@@ -35,18 +35,19 @@ function withIsoStatusChangedAt<Row extends { statusChangedAt: Date }>(row: Row)
   return { ...row, statusChangedAt: row.statusChangedAt.toISOString() };
 }
 
+/** Matches the user's Company with this name, whatever its letter case. */
+export function sameCompanyName(userId: string, name: string) {
+  return and(eq(companies.userId, userId), sql`lower(${companies.name}) = lower(${name})`);
+}
+
 /**
  * The user's Company with this name, created if they haven't used it before. The unique index
  * on the lower-cased name means an existing Company is reused whatever its letter case, and
  * that two requests adding the same company name at once still end up with one Company.
  */
 async function findOrCreateCompany(transaction: Transaction, userId: string, name: string) {
-  const sameName = and(
-    eq(companies.userId, userId),
-    sql`lower(${companies.name}) = lower(${name})`,
-  );
   await transaction.insert(companies).values({ userId, name }).onConflictDoNothing();
-  const [company] = await transaction.select().from(companies).where(sameName);
+  const [company] = await transaction.select().from(companies).where(sameCompanyName(userId, name));
   if (!company) throw new Error(`The Company "${name}" went missing as it was created`);
   return company;
 }
@@ -162,13 +163,21 @@ async function deleteApplication(database: Database, userId: string, id: string)
   return deleted.length > 0;
 }
 
-/** Every query is scoped to the signed-in user, so no list can reach another user's data. */
-async function listApplications(database: Database, userId: string) {
+/**
+ * The user's Applications, latest Status Change first, optionally only those at one Company.
+ * Every query is scoped to the signed-in user, so no list can reach another user's data.
+ */
+export async function listApplications(database: Database, userId: string, companyId?: string) {
   const rows = await database
     .select(summaryColumns)
     .from(applications)
     .innerJoin(companies, eq(companies.id, applications.companyId))
-    .where(eq(applications.userId, userId))
+    .where(
+      and(
+        eq(applications.userId, userId),
+        companyId === undefined ? undefined : eq(applications.companyId, companyId),
+      ),
+    )
     .orderBy(desc(applications.statusChangedAt));
   return rows.map(withIsoStatusChangedAt);
 }
