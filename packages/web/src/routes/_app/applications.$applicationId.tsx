@@ -1,11 +1,13 @@
 import type { Application } from "@job-tracker/shared";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import type { ReactNode } from "react";
 import { applicationQuery } from "@/api/applications";
+import { DeleteApplicationDialog } from "@/components/delete-application-dialog";
+import { EditApplicationDialog } from "@/components/edit-application-dialog";
 import { StatusBadge } from "@/components/status-badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatDayAndTime, sourceLabels } from "@/lib/display";
 
@@ -34,14 +36,36 @@ function ApplicationDetail() {
         Applications
       </Link>
 
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="font-heading text-xl font-semibold tracking-tight">
-            {application.roleTitle}
-          </h1>
-          <StatusBadge status={application.status} />
+      <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="font-heading text-xl font-semibold tracking-tight">
+              {application.roleTitle}
+            </h1>
+            <StatusBadge status={application.status} />
+          </div>
+          <p className="text-muted-foreground">{application.company.name}</p>
         </div>
-        <p className="text-muted-foreground">{application.company.name}</p>
+        <div className="flex items-center gap-2">
+          <EditApplicationDialog
+            application={application}
+            trigger={
+              <Button variant="outline" size="sm">
+                <PencilIcon data-icon="inline-start" />
+                Edit
+              </Button>
+            }
+          />
+          <DeleteApplicationDialog
+            application={application}
+            trigger={
+              <Button variant="destructive" size="sm">
+                <Trash2Icon data-icon="inline-start" />
+                Delete
+              </Button>
+            }
+          />
+        </div>
       </header>
 
       <Separator />

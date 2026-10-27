@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import {
   Application,
+  ApplicationDetails,
   ApplicationSummary,
   ErrorMessage,
   latestStatusChange,
@@ -76,6 +77,19 @@ async function syncCurrentStatus(transaction: Transaction, applicationId: string
     .where(eq(applications.id, applicationId));
 }
 
+/** The columns an Application's details live in, the same whether it is added or edited. */
+function detailValues(companyId: string, details: ApplicationDetails) {
+  return {
+    companyId,
+    roleTitle: details.roleTitle,
+    jobDescription: details.jobDescription,
+    postingLink: details.postingLink,
+    location: details.location,
+    pay: details.pay,
+    source: details.source,
+  };
+}
+
 /** Adds an Application, its Company if it is a new one, and its first Status Change. */
 async function addApplication(
   database: Database,
@@ -89,13 +103,7 @@ async function addApplication(
       .insert(applications)
       .values({
         userId,
-        companyId: company.id,
-        roleTitle: details.roleTitle,
-        jobDescription: details.jobDescription,
-        postingLink: details.postingLink,
-        location: details.location,
-        pay: details.pay,
-        source: details.source,
+        ...detailValues(company.id, details),
         // Both columns are NOT NULL, so the insert seeds them; `syncCurrentStatus` below
         // is what makes them true, and stays the only place that decides what they hold.
         currentStatus: details.status,
@@ -112,6 +120,46 @@ async function addApplication(
     await syncCurrentStatus(transaction, added.id);
     return added.id;
   });
+}
+
+/**
+ * Rewrites every detail of an Application, moving it to the Company the job seeker named and
+ * creating that Company if it is a new one. `false` when the user has no such Application,
+ * which also keeps a Company from being created for one that isn't theirs. The Status is left
+ * alone: only a Status Change moves it.
+ */
+async function editApplication(
+  database: Database,
+  userId: string,
+  id: string,
+  details: ApplicationDetails,
+): Promise<boolean> {
+  return database.transaction(async (transaction) => {
+    const [existing] = await transaction
+      .select({ id: applications.id })
+      .from(applications)
+      .where(and(eq(applications.userId, userId), eq(applications.id, id)));
+    if (!existing) return false;
+    const company = await findOrCreateCompany(transaction, userId, details.companyName);
+    await transaction
+      .update(applications)
+      .set({ ...detailValues(company.id, details), updatedAt: new Date() })
+      // Scoped to the user here too, so this write stays safe on its own.
+      .where(and(eq(applications.userId, userId), eq(applications.id, id)));
+    return true;
+  });
+}
+
+/**
+ * Deletes an Application. Its Status Changes go with it, which the database does, and there
+ * is no archive. `false` when the user has no such Application.
+ */
+async function deleteApplication(database: Database, userId: string, id: string) {
+  const deleted = await database
+    .delete(applications)
+    .where(and(eq(applications.userId, userId), eq(applications.id, id)))
+    .returning({ id: applications.id });
+  return deleted.length > 0;
 }
 
 /** Every query is scoped to the signed-in user, so no list can reach another user's data. */
@@ -200,6 +248,46 @@ const get = createRoute({
   },
 });
 
+// PUT, not PATCH: the body carries every detail, so a detail left out of it is a detail the
+// job seeker cleared. The Status is not a detail, which is why it isn't in the body at all.
+const edit = createRoute({
+  method: "put",
+  path: "/applications/{id}",
+  summary: "Edit an Application's details",
+  description:
+    "Replaces every detail at once, creating the Company when the company name is one the user hasn't used. The Application's Status and its Status Changes are untouched.",
+  request: {
+    params: z.object({ id: z.uuid() }),
+    body: { content: { "application/json": { schema: ApplicationDetails } }, required: true },
+  },
+  responses: {
+    200: {
+      description: "The Application as it now stands",
+      content: { "application/json": { schema: Application } },
+    },
+    404: {
+      description: "No Application of the signed-in user's has this id",
+      content: { "application/json": { schema: ErrorMessage } },
+    },
+  },
+});
+
+const remove = createRoute({
+  method: "delete",
+  path: "/applications/{id}",
+  summary: "Delete an Application",
+  description:
+    "Permanent, and takes the Application's Status Changes with it. There is no archive.",
+  request: { params: z.object({ id: z.uuid() }) },
+  responses: {
+    204: { description: "The Application is gone" },
+    404: {
+      description: "No Application of the signed-in user's has this id",
+      content: { "application/json": { schema: ErrorMessage } },
+    },
+  },
+});
+
 export function applicationRoutes(database: Database) {
   return new OpenAPIHono<SignedIn>()
     .openapi(list, async (c) => c.json(await listApplications(database, c.var.user.id), 200))
@@ -214,6 +302,22 @@ export function applicationRoutes(database: Database) {
       const found = await findApplication(database, c.var.user.id, c.req.valid("param").id);
       return found
         ? c.json(found, 200)
+        : c.json({ message: "This Application doesn't exist." }, 404);
+    })
+    .openapi(edit, async (c) => {
+      const userId = c.var.user.id;
+      const { id } = c.req.valid("param");
+      if (!(await editApplication(database, userId, id, c.req.valid("json")))) {
+        return c.json({ message: "This Application doesn't exist." }, 404);
+      }
+      const edited = await findApplication(database, userId, id);
+      if (!edited) throw new Error("The Application just edited can't be read back");
+      return c.json(edited, 200);
+    })
+    .openapi(remove, async (c) => {
+      const { id } = c.req.valid("param");
+      return (await deleteApplication(database, c.var.user.id, id))
+        ? c.body(null, 204)
         : c.json({ message: "This Application doesn't exist." }, 404);
     });
 }
