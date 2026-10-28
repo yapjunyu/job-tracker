@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as SignedOutSignInRouteImport } from './routes/_signed-out/sign-in'
 import { Route as SignedOutSignUpRouteImport } from './routes/_signed-out/sign-up'
 import { Route as AppApplicationsApplicationIdRouteImport } from './routes/_app/applications.$applicationId'
+import { Route as AppCompaniesCompanyIdRouteImport } from './routes/_app/companies.$companyId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -45,18 +46,25 @@ const AppApplicationsApplicationIdRoute =
     path: '/applications/$applicationId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppCompaniesCompanyIdRoute = AppCompaniesCompanyIdRouteImport.update({
+  id: '/companies/$companyId',
+  path: '/companies/$companyId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignedOutSignInRoute
   '/sign-up': typeof SignedOutSignUpRoute
   '/applications/$applicationId': typeof AppApplicationsApplicationIdRoute
+  '/companies/$companyId': typeof AppCompaniesCompanyIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignedOutSignInRoute
   '/sign-up': typeof SignedOutSignUpRoute
   '/applications/$applicationId': typeof AppApplicationsApplicationIdRoute
+  '/companies/$companyId': typeof AppCompaniesCompanyIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,12 +74,23 @@ export interface FileRoutesById {
   '/_signed-out/sign-up': typeof SignedOutSignUpRoute
   '/_app/': typeof AppIndexRoute
   '/_app/applications/$applicationId': typeof AppApplicationsApplicationIdRoute
+  '/_app/companies/$companyId': typeof AppCompaniesCompanyIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/sign-up' | '/applications/$applicationId'
+  fullPaths:
+    | '/'
+    | '/sign-in'
+    | '/sign-up'
+    | '/applications/$applicationId'
+    | '/companies/$companyId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-up' | '/applications/$applicationId'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/sign-up'
+    | '/applications/$applicationId'
+    | '/companies/$companyId'
   id:
     | '__root__'
     | '/_app'
@@ -80,6 +99,7 @@ export interface FileRouteTypes {
     | '/_signed-out/sign-up'
     | '/_app/'
     | '/_app/applications/$applicationId'
+    | '/_app/companies/$companyId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,17 +151,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApplicationsApplicationIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/companies/$companyId': {
+      id: '/_app/companies/$companyId'
+      path: '/companies/$companyId'
+      fullPath: '/companies/$companyId'
+      preLoaderRoute: typeof AppCompaniesCompanyIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppApplicationsApplicationIdRoute: typeof AppApplicationsApplicationIdRoute
+  AppCompaniesCompanyIdRoute: typeof AppCompaniesCompanyIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppApplicationsApplicationIdRoute: AppApplicationsApplicationIdRoute,
+  AppCompaniesCompanyIdRoute: AppCompaniesCompanyIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

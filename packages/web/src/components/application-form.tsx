@@ -7,6 +7,7 @@ import {
 } from "@job-tracker/shared";
 import { useState } from "react";
 import type { ZodError } from "zod";
+import { CompanyField } from "@/components/company-field";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -130,12 +131,11 @@ export function ApplicationForm(props: ApplicationFormProps) {
 
         <Field data-invalid={Boolean(errors.companyName)}>
           <FieldLabel htmlFor="companyName">Company</FieldLabel>
-          <Input
+          <CompanyField
             id="companyName"
             name="companyName"
             placeholder="Shopee"
             defaultValue={existing?.company.name}
-            required
           />
           {errors.companyName && <FieldError>{errors.companyName}</FieldError>}
         </Field>
