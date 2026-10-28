@@ -22,8 +22,6 @@ async function addApplication(browser: Browser, roleTitle: string) {
   await page.getByRole("button", { name: /^Add (your first )?Application$/ }).click();
   await page.getByLabel("Role title").fill(roleTitle);
   await page.getByLabel("Company").fill("Shopee");
-  // Leaving the field closes its suggestions, which hide the rest of the form while open.
-  await page.getByLabel("Company").press("Tab");
   await page.getByRole("button", { name: "Add Application" }).click();
   const status = page.getByRole("combobox", { name: `Status of ${roleTitle} at Shopee` });
   return { page, status };
