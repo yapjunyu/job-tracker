@@ -7,6 +7,7 @@ import type { Database } from "./database/database";
 import { migrateDatabase } from "./database/migrations";
 import { healthRoutes } from "./health";
 import { meRoutes } from "./me";
+import { statusChangeRoutes } from "./status-changes";
 import { webApp } from "./web-app";
 
 export interface AppConfig {
@@ -53,6 +54,7 @@ export async function createApp(config: AppConfig, dependencies: AppDependencies
   app.route("/api", meRoutes);
   app.route("/api", applicationRoutes(dependencies.database));
   app.route("/api", companyRoutes(dependencies.database));
+  app.route("/api", statusChangeRoutes(dependencies.database));
 
   if (config.webDistDir) {
     app.route("/", webApp(config.webDistDir));

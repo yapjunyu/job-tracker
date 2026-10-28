@@ -34,6 +34,13 @@ export const StatusChange = z
   .meta({ id: "StatusChange" });
 export type StatusChange = z.infer<typeof StatusChange>;
 
+/**
+ * The Status a Status Change records: what changing an Application's Status sends, and what
+ * editing a mistaken Status Change sends.
+ */
+export const NewStatusChange = z.object({ status: Status }).meta({ id: "NewStatusChange" });
+export type NewStatusChange = z.infer<typeof NewStatusChange>;
+
 const summaryFields = {
   id: z.uuid(),
   roleTitle: z.string(),
