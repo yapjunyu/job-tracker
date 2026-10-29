@@ -2,6 +2,7 @@ import {
   type ApplicationListParams,
   ApplicationSort,
   defaultApplicationListParams,
+  filteredByStatus,
   isFiltered,
   sortedBy,
   Source,
@@ -101,6 +102,8 @@ export function ApplicationsFilters({ params, onChange, searchRef }: Application
           value={params.search}
           aria-label="Search Applications"
           placeholder="Search role or Company"
+          // As long a search as the API will take, so none of it is typed only to be refused.
+          maxLength={200}
           className="pl-8"
           onChange={(event) => {
             onChange({ ...params, search: event.target.value });
@@ -122,7 +125,7 @@ export function ApplicationsFilters({ params, onChange, searchRef }: Application
         labels={statusLabels}
         value={params.status}
         onChange={(status) => {
-          onChange({ ...params, status });
+          onChange(filteredByStatus(params, status));
         }}
       />
       <FilterSelect

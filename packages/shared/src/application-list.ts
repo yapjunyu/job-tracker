@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Source } from "./application";
-import { Status } from "./status";
+import { isFinalStatus, Status } from "./status";
 
 /** A column of the table the job seeker can sort by. */
 export const ApplicationSort = z.enum([
@@ -55,6 +55,18 @@ export type ApplicationListParams = z.infer<typeof ApplicationListParams>;
 
 /** The plain table: every active Application, latest Status Change first. */
 export const defaultApplicationListParams: ApplicationListParams = ApplicationListParams.parse({});
+
+/**
+ * The table filtered to these Statuses. Asking for a Status an Application has finished in
+ * says those Applications are wanted, so the active-only view steps aside instead of leaving
+ * the table empty; every filter, this one included, otherwise narrows what the others leave.
+ */
+export function filteredByStatus(
+  params: ApplicationListParams,
+  status: Status[],
+): ApplicationListParams {
+  return { ...params, status, activeOnly: params.activeOnly && !status.some(isFinalStatus) };
+}
 
 /**
  * The same table sorted by a column. Sorting by the column it is already sorted by turns it

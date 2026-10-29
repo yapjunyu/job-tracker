@@ -48,6 +48,7 @@ export function ApplicationsTable({
   const navigate = useNavigate();
   const table = useRef<HTMLTableElement>(null);
   const rows = useRef(new Map<string, HTMLTableRowElement>());
+  const statuses = useRef(new Map<string, HTMLButtonElement>());
   const [keyboardOn, setKeyboardOn] = useState<string | null>(null);
   // The keyboard starts at the first row, and goes back to it if the row it was on has gone.
   const onRow =
@@ -85,12 +86,14 @@ export function ApplicationsTable({
       case "ArrowDown":
       case "j":
         event.preventDefault();
-        moveKeyboard(inTable ? 1 : 0);
+        // From anywhere but a row — a column header, the filters, the page itself — this
+        // first brings the keyboard back to the row it was on.
+        moveKeyboard(row ? 1 : 0);
         break;
       case "ArrowUp":
       case "k":
         event.preventDefault();
-        moveKeyboard(inTable ? -1 : 0);
+        moveKeyboard(row ? -1 : 0);
         break;
       case "Home":
         if (!inTable) return;
@@ -111,16 +114,12 @@ export function ApplicationsTable({
           params: { applicationId: row.id },
         });
         break;
-      case "s": {
+      case "s":
         if (!row || row.pending) return;
         event.preventDefault();
-        // The Status select is the row's own; opening it is exactly what clicking it does.
-        const status = rows.current
-          .get(row.id)
-          ?.querySelector<HTMLElement>('[data-slot="select-trigger"]');
-        status?.click();
+        // Opening the row's own Status badge is exactly what clicking it does.
+        statuses.current.get(row.id)?.click();
         break;
-      }
     }
   });
 
@@ -207,6 +206,10 @@ export function ApplicationsTable({
                 <StatusBadge status={application.status} />
               ) : (
                 <StatusSelect
+                  triggerRef={(element) => {
+                    if (element) statuses.current.set(application.id, element);
+                    else statuses.current.delete(application.id);
+                  }}
                   status={application.status}
                   label={`Status of ${application.roleTitle} at ${application.company.name}`}
                   onChange={(status) => {
@@ -247,14 +250,14 @@ function ColumnHead({
     return <TableHead className={className}>{children}</TableHead>;
   }
 
-  const sortedBy = sorting.sort === column;
+  const sortedByThis = sorting.sort === column;
   const Arrow = sorting.direction === "asc" ? ArrowUpIcon : ArrowDownIcon;
 
   return (
     <TableHead
-      aria-sort={sortedBy ? (sorting.direction === "asc" ? "ascending" : "descending") : "none"}
+      aria-sort={sortedByThis ? (sorting.direction === "asc" ? "ascending" : "descending") : "none"}
       className={cn("p-0", className)}
-      data-sorted={sortedBy ? "" : undefined}
+      data-sorted={sortedByThis ? "" : undefined}
     >
       <button
         type="button"
@@ -262,10 +265,10 @@ function ColumnHead({
           sorting.onSort(column);
         }}
         className="flex h-10 w-full items-center gap-1 px-2 font-medium outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-sorted:text-foreground"
-        data-sorted={sortedBy ? "" : undefined}
+        data-sorted={sortedByThis ? "" : undefined}
       >
-        <span className={sortedBy ? undefined : "text-muted-foreground"}>{children}</span>
-        {sortedBy && <Arrow className="size-3.5 shrink-0" aria-hidden />}
+        <span className={sortedByThis ? undefined : "text-muted-foreground"}>{children}</span>
+        {sortedByThis && <Arrow className="size-3.5 shrink-0" aria-hidden />}
       </button>
     </TableHead>
   );

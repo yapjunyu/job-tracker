@@ -3,6 +3,7 @@ import {
   ApplicationListParams,
   applicationListQuery,
   defaultApplicationListParams,
+  filteredByStatus,
   isFiltered,
   sortedBy,
 } from "./application-list";
@@ -54,6 +55,26 @@ describe("the table's list parameters", () => {
 
   it("ignores the space around a search the job seeker typed", () => {
     expect(ApplicationListParams.parse({ search: "  shopee " }).search).toBe("shopee");
+  });
+});
+
+describe("filtering the table by Status", () => {
+  it("leaves the active-only view alone for a Status an Application is still active in", () => {
+    const filtered = filteredByStatus(defaultApplicationListParams, ["applied", "offer"]);
+
+    expect(filtered).toMatchObject({ status: ["applied", "offer"], activeOnly: true });
+  });
+
+  it("shows the finished Applications once one of their Statuses is asked for", () => {
+    const filtered = filteredByStatus(defaultApplicationListParams, ["rejected"]);
+
+    expect(filtered).toMatchObject({ status: ["rejected"], activeOnly: false });
+  });
+
+  it("leaves the table showing everything once it already is", () => {
+    const showingAll = { ...defaultApplicationListParams, activeOnly: false };
+
+    expect(filteredByStatus(showingAll, ["applied"]).activeOnly).toBe(false);
   });
 });
 

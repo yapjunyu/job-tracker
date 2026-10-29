@@ -6,14 +6,13 @@ import {
 } from "@job-tracker/shared";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { KeyboardIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { applicationsQuery } from "@/api/applications";
 import { AddApplicationDialog } from "@/components/add-application-dialog";
 import { ApplicationsFilters } from "@/components/applications-filters";
 import { ApplicationsTable, type TableSorting } from "@/components/applications-table";
 import { BlurText } from "@/components/react-bits/blur-text";
-import { ShortcutsHelp } from "@/components/shortcuts-help";
 import { Button } from "@/components/ui/button";
 import { useShortcuts } from "@/lib/shortcuts";
 
@@ -26,19 +25,11 @@ function Home() {
   const asked = useMemo(() => ({ ...params, search }), [params, search]);
   const applications = useQuery(applicationsQuery(asked));
   const searchField = useRef<HTMLInputElement>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
 
   useShortcuts((event) => {
-    switch (event.key) {
-      case "/":
-        event.preventDefault();
-        searchField.current?.focus();
-        break;
-      case "?":
-        event.preventDefault();
-        setHelpOpen((open) => !open);
-        break;
-    }
+    if (event.key !== "/") return;
+    event.preventDefault();
+    searchField.current?.focus();
   });
 
   const sorting: TableSorting = {
@@ -58,30 +49,14 @@ function Home() {
     <main className="flex flex-1 flex-col">
       <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <h1 className="font-heading text-lg font-semibold tracking-tight">Applications</h1>
-        <div className="flex items-center gap-2">
-          <ShortcutsHelp
-            open={helpOpen}
-            onOpenChange={setHelpOpen}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Keyboard shortcuts"
-                aria-keyshortcuts="?"
-              >
-                <KeyboardIcon />
-              </Button>
-            }
-          />
-          <AddApplicationDialog
-            trigger={
-              <Button size="sm">
-                <PlusIcon data-icon="inline-start" />
-                Add Application
-              </Button>
-            }
-          />
-        </div>
+        <AddApplicationDialog
+          trigger={
+            <Button size="sm">
+              <PlusIcon data-icon="inline-start" />
+              Add Application
+            </Button>
+          }
+        />
       </div>
 
       {!nothingTracked && (

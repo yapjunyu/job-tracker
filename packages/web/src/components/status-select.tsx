@@ -1,4 +1,5 @@
 import { Status } from "@job-tracker/shared";
+import type { Ref } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import {
   Select,
@@ -17,11 +18,14 @@ export function StatusSelect({
   status,
   label,
   onChange,
+  triggerRef,
 }: {
   status: Status;
   /** Names what the Status belongs to, for anyone who can't see the row or page around it. */
   label: string;
   onChange: (status: Status) => void;
+  /** The badge itself, so the table's `s` shortcut can open the list it opens. */
+  triggerRef?: Ref<HTMLButtonElement>;
 }) {
   return (
     <Select
@@ -32,6 +36,7 @@ export function StatusSelect({
       }}
     >
       <SelectTrigger
+        ref={triggerRef}
         size="sm"
         aria-label={label}
         className="-ml-1.5 border-transparent px-1 hover:border-input dark:bg-transparent"

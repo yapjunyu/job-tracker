@@ -207,17 +207,13 @@ function orderBy(params: ApplicationListParams): SQL[] {
 
 /**
  * Everything the list parameters ask of an Application, on top of it being this user's.
- * Filters combine: an Application has to match all of them.
+ * Filters combine: an Application has to match all of them, the active-only view included.
+ * Asking for a final Status is what `filteredByStatus` turns active-only off for.
  */
-function matching(params: ApplicationListParams): (SQL | undefined)[] {
-  const statusAsked = params.status.length > 0;
+function conditionsFor(params: ApplicationListParams): (SQL | undefined)[] {
   return [
-    statusAsked ? inArray(applications.currentStatus, params.status) : undefined,
-    // A Status filter says exactly which Statuses are wanted, final ones included, so it
-    // takes over from the active-only view rather than being narrowed by it.
-    params.activeOnly && !statusAsked
-      ? notInArray(applications.currentStatus, [...finalStatuses])
-      : undefined,
+    params.status.length > 0 ? inArray(applications.currentStatus, params.status) : undefined,
+    params.activeOnly ? notInArray(applications.currentStatus, [...finalStatuses]) : undefined,
     params.source.length > 0 ? inArray(applications.source, params.source) : undefined,
     params.company.length > 0 ? inArray(applications.companyId, params.company) : undefined,
     // `strpos` rather than `like`, so a `%` or `_` the job seeker types is matched as itself.
@@ -244,7 +240,7 @@ export async function listApplications(
     .select(summaryColumns)
     .from(applications)
     .innerJoin(companies, eq(companies.id, applications.companyId))
-    .where(and(eq(applications.userId, userId), ...matching(params)))
+    .where(and(eq(applications.userId, userId), ...conditionsFor(params)))
     .orderBy(...orderBy(params));
   return rows.map(withIsoStatusChangedAt);
 }
@@ -282,7 +278,7 @@ const list = createRoute({
   path: "/applications",
   summary: "List the signed-in user's Applications",
   description:
-    "The table's rows. Sorting, filtering and search all happen here, so the table only asks: a filter given several values is one comma-separated parameter, as in `status=applied,interviewing`, and filters combine. Asked nothing, it answers with every active Application, latest Status Change first; `activeOnly=false` includes those in a final Status, and a Status filter asks for Statuses outright.",
+    "The table's rows. Sorting, filtering and search all happen here, so the table only asks: a filter given several values is one comma-separated parameter, as in `status=applied,interviewing`, and filters combine. Asked nothing, it answers with every active Application, latest Status Change first; `activeOnly=false` includes those in a final Status. Filters combine, so a Status filter and the active-only view narrow each other.",
   request: { query: ApplicationListParams },
   responses: {
     200: {

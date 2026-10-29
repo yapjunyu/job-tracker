@@ -5,8 +5,9 @@ export const password = "correct horse battery staple";
 
 /**
  * Signs up with a new email address, which it returns, and waits for the app to open. Sign-ups
- * are rate limited, and the spec files run side by side, so one that is turned away waits for
- * the limit to pass and tries again rather than failing the test that asked for an account.
+ * are rate limited, and the spec files run side by side, so a sign-up that is turned away is
+ * asked for again — each attempt waiting up to 15 seconds for the app, which is also how long
+ * the rate limiter is given to let go — rather than failing the test that asked for an account.
  */
 export async function signUp(page: Page): Promise<string> {
   const email = `${randomUUID()}@example.com`;

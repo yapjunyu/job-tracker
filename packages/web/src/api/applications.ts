@@ -1,9 +1,10 @@
 import {
   Application,
+  ApplicationListParams,
   applicationListQuery,
   ApplicationSummary,
+  isFiltered,
   type ApplicationDetails,
-  type ApplicationListParams,
   type NewApplication,
 } from "@job-tracker/shared";
 import {
@@ -28,9 +29,9 @@ export type ApplicationRow = ApplicationSummary & { pending?: boolean };
  * for, so each set of list parameters is its own query, and a change to an Application has to
  * reach all of them.
  */
-export const applicationsListKey = [...applicationsKey, "list"] as const;
+const applicationsListKey = [...applicationsKey, "list"] as const;
 
-const tableQueries = { queryKey: applicationsListKey } as const;
+const everyTableQuery = { queryKey: applicationsListKey } as const;
 
 /**
  * The table's rows as the list parameters ask for them. Sorting, filtering and search all
@@ -61,10 +62,11 @@ export type TableRowsBefore = [readonly unknown[], ApplicationRow[] | undefined]
  * about to be made, and hands back what each holds now.
  */
 export async function holdTableQueries(queryClient: QueryClient): Promise<TableRowsBefore> {
-  await queryClient.cancelQueries(tableQueries);
-  return queryClient.getQueriesData<ApplicationRow[]>(tableQueries);
+  await queryClient.cancelQueries(everyTableQuery);
+  return queryClient.getQueriesData<ApplicationRow[]>(everyTableQuery);
 }
 
+/** Puts every table query back as `holdTableQueries` found it. */
 export function restoreTableQueries(queryClient: QueryClient, before: TableRowsBefore) {
   for (const [queryKey, rows] of before) queryClient.setQueryData(queryKey, rows);
 }
@@ -74,7 +76,17 @@ export function updateTableRows(
   queryClient: QueryClient,
   change: (rows: ApplicationRow[]) => ApplicationRow[],
 ) {
-  queryClient.setQueriesData<ApplicationRow[]>(tableQueries, (rows) => rows && change(rows));
+  queryClient.setQueriesData<ApplicationRow[]>(everyTableQuery, (rows) => rows && change(rows));
+}
+
+/** The list parameters a table query asked for, which its key carries as a query string. */
+function paramsOf(queryKey: readonly unknown[]): ApplicationListParams | undefined {
+  const query = queryKey[applicationsListKey.length];
+  if (typeof query !== "string") return undefined;
+  const asked = ApplicationListParams.safeParse(
+    Object.fromEntries(new URLSearchParams(query).entries()),
+  );
+  return asked.success ? asked.data : undefined;
 }
 
 /**
@@ -142,9 +154,17 @@ export function useAddApplication() {
       // Stops a list already on its way back from overwriting the row just added.
       const previous = await holdTableQueries(queryClient);
       const pending = asPendingRow(details);
-      // At the top of every set of rows the table has loaded: it is the newest Status Change
-      // there is, and the refetch puts it wherever what was asked for really belongs.
-      updateTableRows(queryClient, (rows) => [pending, ...rows]);
+      // At the top of the tables showing everything, since it is the newest Status Change
+      // there is. A table narrowed down is the API's answer to a question this row may be no
+      // part of, so there it waits for the refetch rather than flashing in and out.
+      for (const [queryKey, rows] of queryClient.getQueriesData<ApplicationRow[]>(
+        everyTableQuery,
+      )) {
+        const params = paramsOf(queryKey);
+        if (rows && params && !isFiltered(params)) {
+          queryClient.setQueryData(queryKey, [pending, ...rows]);
+        }
+      }
       return { previous };
     },
     onError: (error, _details, context) => {

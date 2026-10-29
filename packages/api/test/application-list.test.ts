@@ -1,4 +1,8 @@
-import { applicationListQuery, type ApplicationListParams } from "@job-tracker/shared";
+import {
+  applicationListQuery,
+  defaultApplicationListParams,
+  type ApplicationListParams,
+} from "@job-tracker/shared";
 import { describe, expect, it } from "vitest";
 import { signUpSomeone } from "./accounts";
 import { addApplicationOrThrow, listApplications, newApplication } from "./applications";
@@ -10,16 +14,7 @@ async function table(app: TestApp, cookie: string, params: Partial<ApplicationLi
   const response = await listApplications(
     app,
     cookie,
-    applicationListQuery({
-      search: "",
-      status: [],
-      source: [],
-      company: [],
-      activeOnly: true,
-      sort: "statusChangedAt",
-      direction: "desc",
-      ...params,
-    }),
+    applicationListQuery({ ...defaultApplicationListParams, ...params }),
   );
   if (response.status !== 200) throw new Error(`Listing failed with ${response.status}`);
   return (await response.json()) as { id: string; roleTitle: string }[];
@@ -130,15 +125,16 @@ describe("filtering the table", () => {
     expect(titles.toSorted()).toEqual(["Data Intern", "Frontend Intern"]);
   });
 
-  it("asks for a final Status by filtering for it, which takes over from the active-only view", async () => {
+  it("narrows the active-only view rather than replacing it, since every filter combines", async () => {
     const app = await startTestApp();
     const cookie = await signUpSomeone(app);
     await aSearchUnderWay(app, cookie);
 
-    // Active-only is still on: a Status filter says exactly which Statuses are wanted.
-    const titles = await roleTitles(app, cookie, { status: ["rejected"] });
-
-    expect(titles).toEqual(["Platform Intern"]);
+    // Nothing is both active and Rejected; the table turns active-only off to show these.
+    expect(await roleTitles(app, cookie, { status: ["rejected"] })).toEqual([]);
+    expect(await roleTitles(app, cookie, { status: ["rejected"], activeOnly: false })).toEqual([
+      "Platform Intern",
+    ]);
   });
 
   it("filters by Source", async () => {
@@ -269,6 +265,29 @@ describe("sorting the table", () => {
 
     // Saved, then Applied, then Interviewing: by name it would be Applied, Interviewing, Saved.
     expect(titles).toEqual(["Data Intern", "Backend Intern", "Frontend Intern"]);
+    expect(await roleTitles(app, cookie, { sort: "status", direction: "desc" })).toEqual(
+      titles.toReversed(),
+    );
+  });
+
+  it("sorts by Source the way GLOSSARY.md lists the Sources, not by name", async () => {
+    const app = await startTestApp();
+    const cookie = await signUpSomeone(app);
+    await addApplicationOrThrow(
+      app,
+      cookie,
+      newApplication({ roleTitle: "From their site", source: "company-website" }),
+    );
+    await addApplicationOrThrow(
+      app,
+      cookie,
+      newApplication({ roleTitle: "From LinkedIn", source: "linkedin" }),
+    );
+
+    const titles = await roleTitles(app, cookie, { sort: "source", direction: "asc" });
+
+    // LinkedIn comes before Company website in GLOSSARY.md; by name it would be the other way.
+    expect(titles).toEqual(["From LinkedIn", "From their site"]);
   });
 
   it("leaves an Application with no Source last whichever way Source is sorted", async () => {
