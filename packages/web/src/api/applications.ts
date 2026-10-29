@@ -1,10 +1,18 @@
 import {
   Application,
+  applicationListQuery,
   ApplicationSummary,
   type ApplicationDetails,
+  type ApplicationListParams,
   type NewApplication,
 } from "@job-tracker/shared";
-import { type QueryClient, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  type QueryClient,
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { applicationsKey, companiesKey } from "@/api/query-keys";
 import { failureMessage } from "@/api/failure-message";
@@ -15,17 +23,59 @@ import { failureMessage } from "@/api/failure-message";
  */
 export type ApplicationRow = ApplicationSummary & { pending?: boolean };
 
-/** Every Application in the table, latest Status Change first. */
-export const applicationsQuery = queryOptions({
-  queryKey: applicationsKey,
-  queryFn: async (): Promise<ApplicationRow[]> => {
-    const response = await fetch("/api/applications");
-    if (!response.ok) {
-      throw new Error(await failureMessage(response, "Your Applications couldn't be loaded."));
-    }
-    return ApplicationSummary.array().parse(await response.json());
-  },
-});
+/**
+ * What every table query's key starts with. The rows the table shows depend on what it asked
+ * for, so each set of list parameters is its own query, and a change to an Application has to
+ * reach all of them.
+ */
+export const applicationsListKey = [...applicationsKey, "list"] as const;
+
+const tableQueries = { queryKey: applicationsListKey } as const;
+
+/**
+ * The table's rows as the list parameters ask for them. Sorting, filtering and search all
+ * happen in the API, so a change to any of them is a new query rather than work in here.
+ */
+export function applicationsQuery(params: ApplicationListParams) {
+  const query = applicationListQuery(params);
+  return queryOptions({
+    queryKey: [...applicationsListKey, query],
+    queryFn: async (): Promise<ApplicationRow[]> => {
+      const response = await fetch(query ? `/api/applications?${query}` : "/api/applications");
+      if (!response.ok) {
+        throw new Error(await failureMessage(response, "Your Applications couldn't be loaded."));
+      }
+      return ApplicationSummary.array().parse(await response.json());
+    },
+    // The rows on screen stay up while the next ones load, so sorting the table or typing a
+    // search never empties it.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** What the table queries hold now, so a change the server rejects can be put back. */
+export type TableRowsBefore = [readonly unknown[], ApplicationRow[] | undefined][];
+
+/**
+ * Stops every table query still loading, so none of their answers lands over the change
+ * about to be made, and hands back what each holds now.
+ */
+export async function holdTableQueries(queryClient: QueryClient): Promise<TableRowsBefore> {
+  await queryClient.cancelQueries(tableQueries);
+  return queryClient.getQueriesData<ApplicationRow[]>(tableQueries);
+}
+
+export function restoreTableQueries(queryClient: QueryClient, before: TableRowsBefore) {
+  for (const [queryKey, rows] of before) queryClient.setQueryData(queryKey, rows);
+}
+
+/** Shows a change on every set of rows the table has loaded, however each was asked for. */
+export function updateTableRows(
+  queryClient: QueryClient,
+  change: (rows: ApplicationRow[]) => ApplicationRow[],
+) {
+  queryClient.setQueriesData<ApplicationRow[]>(tableQueries, (rows) => rows && change(rows));
+}
 
 /**
  * Refetches the table and everything about Companies. Adding, editing or deleting an
@@ -34,7 +84,7 @@ export const applicationsQuery = queryOptions({
  */
 export function invalidateApplicationsAndCompanies(queryClient: QueryClient) {
   return Promise.all([
-    queryClient.invalidateQueries({ queryKey: applicationsQuery.queryKey }),
+    queryClient.invalidateQueries({ queryKey: applicationsKey }),
     queryClient.invalidateQueries({ queryKey: companiesKey }),
   ]);
 }
@@ -90,17 +140,15 @@ export function useAddApplication() {
     },
     onMutate: async (details) => {
       // Stops a list already on its way back from overwriting the row just added.
-      await queryClient.cancelQueries({ queryKey: applicationsQuery.queryKey });
-      const previous = queryClient.getQueryData(applicationsQuery.queryKey);
-      queryClient.setQueryData(applicationsQuery.queryKey, (rows = []) => [
-        asPendingRow(details),
-        ...rows,
-      ]);
+      const previous = await holdTableQueries(queryClient);
+      const pending = asPendingRow(details);
+      // At the top of every set of rows the table has loaded: it is the newest Status Change
+      // there is, and the refetch puts it wherever what was asked for really belongs.
+      updateTableRows(queryClient, (rows) => [pending, ...rows]);
       return { previous };
     },
     onError: (error, _details, context) => {
-      // Without a list to go back to, an empty one at least lets the page render again.
-      queryClient.setQueryData(applicationsQuery.queryKey, context?.previous ?? []);
+      if (context) restoreTableQueries(queryClient, context.previous);
       toast.error("That Application wasn't added.", { description: error.message });
     },
     onSettled: () => invalidateApplicationsAndCompanies(queryClient),
@@ -158,26 +206,23 @@ export function useEditApplication(id: string) {
     },
     onMutate: async (details) => {
       // Stops answers already on their way back from overwriting the edit just made.
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: detailKey }),
-        queryClient.cancelQueries({ queryKey: applicationsQuery.queryKey }),
-      ]);
+      await queryClient.cancelQueries({ queryKey: detailKey });
       const previous = {
         application: queryClient.getQueryData(detailKey),
-        rows: queryClient.getQueryData(applicationsQuery.queryKey),
+        rows: await holdTableQueries(queryClient),
       };
       queryClient.setQueryData(detailKey, (application) =>
         application ? withDetails(application, details) : application,
       );
-      queryClient.setQueryData(applicationsQuery.queryKey, (rows) =>
-        rows?.map((row) => (row.id === id ? withSummaryDetails(row, details) : row)),
+      updateTableRows(queryClient, (rows) =>
+        rows.map((row) => (row.id === id ? withSummaryDetails(row, details) : row)),
       );
       return previous;
     },
     onError: (error, _details, context) => {
       if (context) {
         queryClient.setQueryData(detailKey, context.application);
-        queryClient.setQueryData(applicationsQuery.queryKey, context.rows);
+        restoreTableQueries(queryClient, context.rows);
       }
       toast.error("That change wasn't saved.", { description: error.message });
     },
@@ -207,11 +252,8 @@ export function useDeleteApplication(id: string) {
       }
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: applicationsQuery.queryKey });
-      const previous = queryClient.getQueryData(applicationsQuery.queryKey);
-      queryClient.setQueryData(applicationsQuery.queryKey, (rows) =>
-        rows?.filter((row) => row.id !== id),
-      );
+      const previous = await holdTableQueries(queryClient);
+      updateTableRows(queryClient, (rows) => rows.filter((row) => row.id !== id));
       return { previous };
     },
     onSuccess: () => {
@@ -219,7 +261,7 @@ export function useDeleteApplication(id: string) {
       queryClient.removeQueries({ queryKey: applicationQuery(id).queryKey });
     },
     onError: (error, _variables, context) => {
-      if (context) queryClient.setQueryData(applicationsQuery.queryKey, context.previous);
+      if (context) restoreTableQueries(queryClient, context.previous);
       toast.error("That Application wasn't deleted.", { description: error.message });
     },
     onSettled: () => invalidateApplicationsAndCompanies(queryClient),

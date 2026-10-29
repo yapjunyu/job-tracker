@@ -14,16 +14,19 @@ export const Status = z.enum([
 ]);
 export type Status = z.infer<typeof Status>;
 
-const finalStatuses: ReadonlySet<Status> = new Set([
+/** The Statuses an Application has finished in, which the table's active-only view hides. */
+export const finalStatuses = [
   "accepted",
   "declined",
   "rejected",
   "withdrawn",
-]);
+] as const satisfies readonly Status[];
+
+const finalStatusSet: ReadonlySet<Status> = new Set(finalStatuses);
 
 /** An Application in a final Status is no longer active, and a Round never moves it. */
 export function isFinalStatus(status: Status): boolean {
-  return finalStatuses.has(status);
+  return finalStatusSet.has(status);
 }
 
 /** What the current-Status rule needs of a Status Change. */

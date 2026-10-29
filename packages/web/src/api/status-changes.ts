@@ -10,8 +10,8 @@ import { type Query, type QueryClient, useMutation, useQueryClient } from "@tans
 import { toast } from "sonner";
 import {
   applicationQuery,
-  applicationsQuery,
   invalidateApplicationsAndCompanies,
+  updateTableRows,
 } from "@/api/applications";
 import { failureMessage } from "@/api/failure-message";
 import { applicationsKey, companiesKey } from "@/api/query-keys";
@@ -57,7 +57,7 @@ function showStatusOnRows(
 ) {
   const withCurrent = <Row extends ApplicationSummary>(row: Row): Row =>
     row.id === id ? { ...row, ...current } : row;
-  queryClient.setQueryData(applicationsQuery.queryKey, (rows) => rows?.map(withCurrent));
+  updateTableRows(queryClient, (rows) => rows.map(withCurrent));
   queryClient.setQueriesData<CompanyWithApplications | null>(
     { queryKey: companiesKey, predicate: isOneCompany },
     (company) => company && { ...company, applications: company.applications.map(withCurrent) },

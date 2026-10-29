@@ -1,4 +1,4 @@
-import type { Source, Status } from "@job-tracker/shared";
+import type { ApplicationSort, Source, Status } from "@job-tracker/shared";
 
 /** The Statuses as GLOSSARY.md names them. */
 export const statusLabels: Record<Status, string> = {
@@ -21,6 +21,15 @@ export const sourceLabels: Record<Source, string> = {
   referral: "Referral",
   "career-fair": "Career fair",
   other: "Other",
+};
+
+/** The columns the table can be sorted by, as its headers name them. */
+export const sortLabels: Record<ApplicationSort, string> = {
+  roleTitle: "Role",
+  company: "Company",
+  status: "Status",
+  source: "Source",
+  statusChangedAt: "Last change",
 };
 
 // Times are stored in UTC and shown in whatever time zone the browser is in.

@@ -2,12 +2,18 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import {
   Application,
   ApplicationDetails,
+  ApplicationListParams,
+  type ApplicationSort,
   ApplicationSummary,
   ErrorMessage,
+  finalStatuses,
   latestStatusChange,
   NewApplication,
+  Source,
+  Status,
 } from "@job-tracker/shared";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray, or, sql, type SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { SignedIn } from "./auth";
 import type { Database } from "./database/database";
 import { applications, companies, statusChanges } from "./database/schema";
@@ -167,21 +173,79 @@ async function deleteApplication(database: Database, userId: string, id: string)
 }
 
 /**
- * The user's Applications, latest Status Change first, optionally only those at one Company.
+ * Where a value sits in its own list, as a number to sort by. Sorting by Status then follows
+ * the order an Application moves through them, and sorting by Source follows GLOSSARY.md,
+ * rather than either going by name: Saved before Offer, not Accepted before Saved. The index
+ * is written into the query itself, since it comes from our own list and not from a request.
+ */
+function listOrder(column: AnyPgColumn, values: readonly string[]): SQL {
+  const cases = values.map(
+    (value, index) => sql`when ${column} = ${value} then ${sql.raw(String(index))}`,
+  );
+  return sql`case ${sql.join(cases, sql` `)} end`;
+}
+
+/** What each column the table sorts by is in the query, so the database does the sorting. */
+const sortExpressions: Record<ApplicationSort, SQL> = {
+  roleTitle: sql`lower(${applications.roleTitle})`,
+  company: sql`lower(${companies.name})`,
+  status: listOrder(applications.currentStatus, Status.options),
+  source: listOrder(applications.source, Source.options),
+  statusChangedAt: sql`${applications.statusChangedAt}`,
+};
+
+function orderBy(params: ApplicationListParams): SQL[] {
+  const direction = sql.raw(params.direction);
+  return [
+    // Nulls last either way round, so Applications missing the column sorted by never lead.
+    sql`${sortExpressions[params.sort]} ${direction} nulls last`,
+    // Rows alike in that column keep an order of their own, the same on every request.
+    sql`${applications.statusChangedAt} desc`,
+    sql`${applications.id} asc`,
+  ];
+}
+
+/**
+ * Everything the list parameters ask of an Application, on top of it being this user's.
+ * Filters combine: an Application has to match all of them.
+ */
+function matching(params: ApplicationListParams): (SQL | undefined)[] {
+  const statusAsked = params.status.length > 0;
+  return [
+    statusAsked ? inArray(applications.currentStatus, params.status) : undefined,
+    // A Status filter says exactly which Statuses are wanted, final ones included, so it
+    // takes over from the active-only view rather than being narrowed by it.
+    params.activeOnly && !statusAsked
+      ? notInArray(applications.currentStatus, [...finalStatuses])
+      : undefined,
+    params.source.length > 0 ? inArray(applications.source, params.source) : undefined,
+    params.company.length > 0 ? inArray(applications.companyId, params.company) : undefined,
+    // `strpos` rather than `like`, so a `%` or `_` the job seeker types is matched as itself.
+    params.search
+      ? or(
+          sql`strpos(lower(${applications.roleTitle}), lower(${params.search})) > 0`,
+          sql`strpos(lower(${companies.name}), lower(${params.search})) > 0`,
+        )
+      : undefined,
+  ];
+}
+
+/**
+ * The user's Applications as the list parameters ask for them: filtered, searched and sorted
+ * here rather than in the browser, so the table shows the same rows at any size of search.
  * Every query is scoped to the signed-in user, so no list can reach another user's data.
  */
-export async function listApplications(database: Database, userId: string, companyId?: string) {
+export async function listApplications(
+  database: Database,
+  userId: string,
+  params: ApplicationListParams,
+) {
   const rows = await database
     .select(summaryColumns)
     .from(applications)
     .innerJoin(companies, eq(companies.id, applications.companyId))
-    .where(
-      and(
-        eq(applications.userId, userId),
-        companyId === undefined ? undefined : eq(applications.companyId, companyId),
-      ),
-    )
-    .orderBy(desc(applications.statusChangedAt));
+    .where(and(eq(applications.userId, userId), ...matching(params)))
+    .orderBy(...orderBy(params));
   return rows.map(withIsoStatusChangedAt);
 }
 
@@ -217,7 +281,9 @@ const list = createRoute({
   method: "get",
   path: "/applications",
   summary: "List the signed-in user's Applications",
-  description: "The table's rows, latest Status Change first.",
+  description:
+    "The table's rows. Sorting, filtering and search all happen here, so the table only asks: a filter given several values is one comma-separated parameter, as in `status=applied,interviewing`, and filters combine. Asked nothing, it answers with every active Application, latest Status Change first; `activeOnly=false` includes those in a final Status, and a Status filter asks for Statuses outright.",
+  request: { query: ApplicationListParams },
   responses: {
     200: {
       description: "Every Application the signed-in user has",
@@ -302,7 +368,9 @@ const remove = createRoute({
 
 export function applicationRoutes(database: Database) {
   return new OpenAPIHono<SignedIn>()
-    .openapi(list, async (c) => c.json(await listApplications(database, c.var.user.id), 200))
+    .openapi(list, async (c) =>
+      c.json(await listApplications(database, c.var.user.id, c.req.valid("query")), 200),
+    )
     .openapi(add, async (c) => {
       const userId = c.var.user.id;
       const id = await addApplication(database, userId, c.req.valid("json"));

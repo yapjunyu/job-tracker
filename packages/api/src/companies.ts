@@ -1,5 +1,11 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { Company, CompanyRename, CompanyWithApplications, ErrorMessage } from "@job-tracker/shared";
+import {
+  Company,
+  CompanyRename,
+  CompanyWithApplications,
+  defaultApplicationListParams,
+  ErrorMessage,
+} from "@job-tracker/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { listApplications, sameCompanyName } from "./applications";
 import type { SignedIn } from "./auth";
@@ -32,7 +38,14 @@ async function findCompany(database: Database, userId: string, id: string) {
     .from(companies)
     .where(and(eq(companies.userId, userId), eq(companies.id, id)));
   if (!company) return undefined;
-  return { ...company, applications: await listApplications(database, userId, id) };
+  // A Company view is the user's whole history with that employer, so it keeps the
+  // Applications that have finished rather than hiding them as the table does.
+  const applications = await listApplications(database, userId, {
+    ...defaultApplicationListParams,
+    company: [id],
+    activeOnly: false,
+  });
+  return { ...company, applications };
 }
 
 /** Whether `error` is Postgres refusing a second Company with the same name for one user. */
