@@ -1,15 +1,17 @@
 import type { Application } from "@job-tracker/shared";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeftIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { applicationQuery } from "@/api/applications";
+import { useDeleteStatusChange, useEditStatusChange } from "@/api/status-changes";
 import { DeleteApplicationDialog } from "@/components/delete-application-dialog";
 import { EditApplicationDialog } from "@/components/edit-application-dialog";
 import { StatusBadge } from "@/components/status-badge";
+import { StatusSelect } from "@/components/status-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { formatDayAndTime, sourceLabels } from "@/lib/display";
+import { formatDayAndTime, sourceLabels, statusLabels } from "@/lib/display";
 
 export const Route = createFileRoute("/_app/applications/$applicationId")({
   loader: async ({ context, params }) => {
@@ -105,7 +107,7 @@ function ApplicationDetail() {
         </section>
       )}
 
-      <StatusHistory statusChanges={application.statusChanges} />
+      <StatusHistory application={application} />
     </main>
   );
 }
@@ -119,19 +121,47 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function StatusHistory({ statusChanges }: { statusChanges: Application["statusChanges"] }) {
+/**
+ * Every Status Change, newest first. A mistaken one is corrected by picking the Status it
+ * should have recorded, or deleted; the Application's Status follows whichever is latest.
+ */
+function StatusHistory({ application }: { application: Application }) {
+  const editStatusChange = useEditStatusChange(application.id);
+  const deleteStatusChange = useDeleteStatusChange(application.id);
+  const onlyOne = application.statusChanges.length === 1;
+
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-sm font-medium">Status history</h2>
-      <ol className="flex flex-col gap-2">
-        {statusChanges.map((statusChange) => (
-          <li key={statusChange.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <StatusBadge status={statusChange.status} />
-            <span className="text-sm text-muted-foreground">
-              {formatDayAndTime(statusChange.occurredAt)}
-            </span>
-          </li>
-        ))}
+      <ol className="flex flex-col gap-1">
+        {application.statusChanges.map((statusChange) => {
+          const when = formatDayAndTime(statusChange.occurredAt);
+          return (
+            <li key={statusChange.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <StatusSelect
+                status={statusChange.status}
+                label={`Status recorded ${when}`}
+                onChange={(status) => {
+                  editStatusChange.mutate({ statusChangeId: statusChange.id, status });
+                }}
+              />
+              <span className="text-sm text-muted-foreground">{when}</span>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                // An Application always has a Status, so its only Status Change stays.
+                disabled={onlyOne}
+                title={onlyOne ? "An Application always keeps one Status Change" : undefined}
+                aria-label={`Delete the Status Change to ${statusLabels[statusChange.status]} ${when}`}
+                onClick={() => {
+                  deleteStatusChange.mutate(statusChange.id);
+                }}
+              >
+                <XIcon />
+              </Button>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

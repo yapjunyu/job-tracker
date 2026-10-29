@@ -12,7 +12,7 @@ import type { SignedIn } from "./auth";
 import type { Database } from "./database/database";
 import { applications, companies, statusChanges } from "./database/schema";
 
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 const summaryColumns = {
   id: applications.id,
@@ -57,7 +57,10 @@ async function findOrCreateCompany(transaction: Transaction, userId: string, nam
  * Status Change. Every write to an Application's Status Changes calls this in the same
  * transaction, so the two can never drift apart.
  */
-async function syncCurrentStatus(transaction: Transaction, applicationId: string): Promise<void> {
+export async function syncCurrentStatus(
+  transaction: Transaction,
+  applicationId: string,
+): Promise<void> {
   const history = await transaction
     .select({
       status: statusChanges.status,
@@ -183,7 +186,7 @@ export async function listApplications(database: Database, userId: string, compa
 }
 
 /** `undefined` both for an Application that doesn't exist and for another user's. */
-async function findApplication(database: Database, userId: string, id: string) {
+export async function findApplication(database: Database, userId: string, id: string) {
   const [row] = await database
     .select(detailColumns)
     .from(applications)

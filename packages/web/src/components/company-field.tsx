@@ -26,9 +26,20 @@ export function CompanyField({ id, name, defaultValue, placeholder }: CompanyFie
     search === ""
       ? []
       : (suggestions.data ?? []).map((company) => company.name).filter((n) => n !== value);
+  // An open popup hides the rest of the dialog from screen readers, so it only counts as
+  // open while it has suggestions to show.
+  const [open, setOpen] = useState(false);
 
   return (
-    <Autocomplete.Root items={names} mode="none" value={value} onValueChange={setValue} name={name}>
+    <Autocomplete.Root
+      items={names}
+      mode="none"
+      value={value}
+      onValueChange={setValue}
+      open={open && names.length > 0}
+      onOpenChange={setOpen}
+      name={name}
+    >
       <Autocomplete.Input
         id={id}
         required
@@ -37,7 +48,7 @@ export function CompanyField({ id, name, defaultValue, placeholder }: CompanyFie
       />
       <Autocomplete.Portal>
         <Autocomplete.Positioner sideOffset={4} className="isolate z-50">
-          <Autocomplete.Popup className="max-h-(--available-height) w-(--anchor-width) overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 data-empty:hidden">
+          <Autocomplete.Popup className="max-h-(--available-height) w-(--anchor-width) overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10">
             <Autocomplete.List>
               {(company: string) => (
                 <Autocomplete.Item

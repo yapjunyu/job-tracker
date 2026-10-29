@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import type { ApplicationRow } from "@/api/applications";
+import { useChangeStatus } from "@/api/status-changes";
 import { StatusBadge } from "@/components/status-badge";
+import { StatusSelect } from "@/components/status-select";
 import {
   Table,
   TableBody,
@@ -19,6 +21,8 @@ interface ApplicationsTableProps {
 
 /** The dense table of Applications, on the home screen and in each Company view. */
 export function ApplicationsTable({ applications, showCompany = true }: ApplicationsTableProps) {
+  const changeStatus = useChangeStatus();
+
   return (
     <Table className="border-t">
       <TableHeader>
@@ -67,8 +71,19 @@ export function ApplicationsTable({ applications, showCompany = true }: Applicat
                 )}
               </TableCell>
             )}
-            <TableCell>
-              <StatusBadge status={application.status} />
+            <TableCell className="py-0">
+              {application.pending ? (
+                // Nor can its Status change before there is an Application to record it on.
+                <StatusBadge status={application.status} />
+              ) : (
+                <StatusSelect
+                  status={application.status}
+                  label={`Status of ${application.roleTitle} at ${application.company.name}`}
+                  onChange={(status) => {
+                    changeStatus.mutate({ applicationId: application.id, status });
+                  }}
+                />
+              )}
             </TableCell>
             <TableCell className="hidden text-muted-foreground sm:table-cell">
               {application.source ? sourceLabels[application.source] : "—"}
