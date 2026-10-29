@@ -16,8 +16,9 @@ export function addApplication(app: TestApp, cookie: string, body: object) {
   return post(app, "/api/applications", { body, cookie });
 }
 
-export function listApplications(app: TestApp, cookie: string) {
-  return get(app, "/api/applications", cookie);
+/** Lists the job seeker's Applications, with the table's list parameters as a query string. */
+export function listApplications(app: TestApp, cookie: string, query = "") {
+  return get(app, query ? `/api/applications?${query}` : "/api/applications", cookie);
 }
 
 export function getApplication(app: TestApp, cookie: string, id: string) {

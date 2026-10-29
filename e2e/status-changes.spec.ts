@@ -21,7 +21,8 @@ async function addApplication(browser: Browser, roleTitle: string) {
   await page.goto("/");
   await page.getByRole("button", { name: /^Add (your first )?Application$/ }).click();
   await page.getByLabel("Role title").fill(roleTitle);
-  await page.getByLabel("Company").fill("Shopee");
+  // Exactly the form's own field: the table behind the dialog has a Company filter too.
+  await page.getByLabel("Company", { exact: true }).fill("Shopee");
   await page.getByRole("button", { name: "Add Application" }).click();
   const status = page.getByRole("combobox", { name: `Status of ${roleTitle} at Shopee` });
   return { page, status };

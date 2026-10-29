@@ -1,4 +1,8 @@
-import { Link } from "@tanstack/react-router";
+import type { ApplicationSort, SortDirection } from "@job-tracker/shared";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { cn } from "cn";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import type { ApplicationRow } from "@/api/applications";
 import { useChangeStatus } from "@/api/status-changes";
 import { StatusBadge } from "@/components/status-badge";
@@ -11,32 +15,157 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDay, sourceLabels } from "@/lib/display";
+import { formatDay, sortLabels, sourceLabels } from "@/lib/display";
+import { useShortcuts } from "@/lib/shortcuts";
+
+/** How the table is sorted, and what a click on a column header asks for. */
+export interface TableSorting {
+  sort: ApplicationSort;
+  direction: SortDirection;
+  /** Sorts by this column, which the table leaves to the page: it decides which way round. */
+  onSort: (column: ApplicationSort) => void;
+}
 
 interface ApplicationsTableProps {
   applications: ApplicationRow[];
   /** Off in a Company view, where every row would repeat the same name. */
   showCompany?: boolean;
+  /** Left out in a Company view, which shows one Company's history in its own order. */
+  sorting?: TableSorting;
 }
 
-/** The dense table of Applications, on the home screen and in each Company view. */
-export function ApplicationsTable({ applications, showCompany = true }: ApplicationsTableProps) {
+/**
+ * The dense table of Applications, on the home screen and in each Company view. It can be
+ * worked from the keyboard alone: the arrow keys, or `j` and `k`, move between rows, `Enter`
+ * opens the row the keyboard is on and `s` changes its Status. `ShortcutsHelp` lists them all.
+ */
+export function ApplicationsTable({
+  applications,
+  showCompany = true,
+  sorting,
+}: ApplicationsTableProps) {
   const changeStatus = useChangeStatus();
+  const navigate = useNavigate();
+  const table = useRef<HTMLTableElement>(null);
+  const rows = useRef(new Map<string, HTMLTableRowElement>());
+  const statuses = useRef(new Map<string, HTMLButtonElement>());
+  const [keyboardOn, setKeyboardOn] = useState<string | null>(null);
+  // The keyboard starts at the first row, and goes back to it if the row it was on has gone.
+  const onRow =
+    keyboardOn !== null && applications.some((application) => application.id === keyboardOn)
+      ? keyboardOn
+      : applications[0]?.id;
+
+  /** The row the keyboard is on, when it is on the row itself and not on something in it. */
+  function rowWithKeyboard(): ApplicationRow | undefined {
+    const focused = document.activeElement;
+    const [id] = [...rows.current].find(([, element]) => element === focused) ?? [];
+    return applications.find((application) => application.id === id);
+  }
+
+  /** Moves the keyboard `step` rows along, or onto the row it was last on when it is away. */
+  function moveKeyboard(step: number) {
+    const ids = applications.map((application) => application.id);
+    const from = ids.indexOf(onRow ?? "");
+    const to = Math.min(Math.max(from + step, 0), ids.length - 1);
+    const id = ids[to];
+    if (!id) return;
+    setKeyboardOn(id);
+    rows.current.get(id)?.focus();
+  }
+
+  useShortcuts((event) => {
+    const focused = document.activeElement;
+    // A list or a dialog that is open answers its own keys; anywhere else on the page they
+    // are the table's, so the job seeker never has to click back into it first.
+    if (focused?.closest('[role="listbox"], [role="dialog"]')) return;
+    const inTable = focused !== null && table.current?.contains(focused) === true;
+    const row = rowWithKeyboard();
+
+    switch (event.key) {
+      case "ArrowDown":
+      case "j":
+        event.preventDefault();
+        // From anywhere but a row — a column header, the filters, the page itself — this
+        // first brings the keyboard back to the row it was on.
+        moveKeyboard(row ? 1 : 0);
+        break;
+      case "ArrowUp":
+      case "k":
+        event.preventDefault();
+        moveKeyboard(row ? -1 : 0);
+        break;
+      case "Home":
+        if (!inTable) return;
+        event.preventDefault();
+        moveKeyboard(-applications.length);
+        break;
+      case "End":
+        if (!inTable) return;
+        event.preventDefault();
+        moveKeyboard(applications.length);
+        break;
+      case "Enter":
+        // There is no Application behind a pending row's id yet, so it has nowhere to lead.
+        if (!row || row.pending) return;
+        event.preventDefault();
+        void navigate({
+          to: "/applications/$applicationId",
+          params: { applicationId: row.id },
+        });
+        break;
+      case "s":
+        if (!row || row.pending) return;
+        event.preventDefault();
+        // Opening the row's own Status badge is exactly what clicking it does.
+        statuses.current.get(row.id)?.click();
+        break;
+    }
+  });
 
   return (
-    <Table className="border-t">
+    <Table ref={table} className="border-t">
       <TableHeader>
         <TableRow>
-          <TableHead className="pl-4 sm:pl-6">Role</TableHead>
-          {showCompany && <TableHead>Company</TableHead>}
-          <TableHead>Status</TableHead>
-          <TableHead className="hidden sm:table-cell">Source</TableHead>
-          <TableHead className="hidden pr-4 sm:pr-6 md:table-cell">Last change</TableHead>
+          <ColumnHead column="roleTitle" sorting={sorting} className="pl-4 sm:pl-6">
+            {sortLabels.roleTitle}
+          </ColumnHead>
+          {showCompany && (
+            <ColumnHead column="company" sorting={sorting}>
+              {sortLabels.company}
+            </ColumnHead>
+          )}
+          <ColumnHead column="status" sorting={sorting}>
+            {sortLabels.status}
+          </ColumnHead>
+          <ColumnHead column="source" sorting={sorting} className="hidden sm:table-cell">
+            {sortLabels.source}
+          </ColumnHead>
+          <ColumnHead
+            column="statusChangedAt"
+            sorting={sorting}
+            className="hidden pr-4 sm:pr-6 md:table-cell"
+          >
+            {sortLabels.statusChangedAt}
+          </ColumnHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {applications.map((application) => (
-          <TableRow key={application.id}>
+          <TableRow
+            key={application.id}
+            ref={(element) => {
+              if (element) rows.current.set(application.id, element);
+              else rows.current.delete(application.id);
+            }}
+            // One row at a time is in the tab order, so Tab passes the table by and the
+            // arrow keys move within it.
+            tabIndex={application.id === onRow ? 0 : -1}
+            onFocus={() => {
+              setKeyboardOn(application.id);
+            }}
+            className="outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          >
             <TableCell className="py-0 pl-4 font-medium sm:pl-6">
               {application.pending ? (
                 // There is no Application behind this row's id until the server answers,
@@ -77,6 +206,10 @@ export function ApplicationsTable({ applications, showCompany = true }: Applicat
                 <StatusBadge status={application.status} />
               ) : (
                 <StatusSelect
+                  triggerRef={(element) => {
+                    if (element) statuses.current.set(application.id, element);
+                    else statuses.current.delete(application.id);
+                  }}
                   status={application.status}
                   label={`Status of ${application.roleTitle} at ${application.company.name}`}
                   onChange={(status) => {
@@ -95,6 +228,49 @@ export function ApplicationsTable({ applications, showCompany = true }: Applicat
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+/**
+ * A column heading. Where the table sorts, it is a button that sorts by its column and says
+ * which way the table stands, so a screen reader reads the order out as well as the name.
+ */
+function ColumnHead({
+  column,
+  sorting,
+  className,
+  children,
+}: {
+  column: ApplicationSort;
+  sorting: TableSorting | undefined;
+  className?: string;
+  children: string;
+}) {
+  if (!sorting) {
+    return <TableHead className={className}>{children}</TableHead>;
+  }
+
+  const sortedByThis = sorting.sort === column;
+  const Arrow = sorting.direction === "asc" ? ArrowUpIcon : ArrowDownIcon;
+
+  return (
+    <TableHead
+      aria-sort={sortedByThis ? (sorting.direction === "asc" ? "ascending" : "descending") : "none"}
+      className={cn("p-0", className)}
+      data-sorted={sortedByThis ? "" : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          sorting.onSort(column);
+        }}
+        className="flex h-10 w-full items-center gap-1 px-2 font-medium outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-sorted:text-foreground"
+        data-sorted={sortedByThis ? "" : undefined}
+      >
+        <span className={sortedByThis ? undefined : "text-muted-foreground"}>{children}</span>
+        {sortedByThis && <Arrow className="size-3.5 shrink-0" aria-hidden />}
+      </button>
+    </TableHead>
   );
 }
 

@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { applicationsQuery, invalidateApplicationsAndCompanies } from "@/api/applications";
+import { invalidateApplicationsAndCompanies, updateTableRows } from "@/api/applications";
 import { failureMessage } from "@/api/failure-message";
 import { applicationsKey, companiesKey } from "@/api/query-keys";
 
@@ -81,7 +81,7 @@ export function useRenameCompany(id: string) {
       const renamed = <Row extends { company: Company }>(row: Row): Row =>
         row.company.id === id ? { ...row, company: { ...row.company, name } } : row;
       queryClient.setQueryData(companyKey, (company) => company && { ...company, name });
-      queryClient.setQueryData(applicationsQuery.queryKey, (rows) => rows?.map(renamed));
+      updateTableRows(queryClient, (rows) => rows.map(renamed));
       queryClient.setQueriesData<Application | null>(
         { queryKey: applicationsKey, predicate: isOneApplication },
         (application) => application && renamed(application),
