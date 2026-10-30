@@ -56,8 +56,13 @@ export function CommandPalette({
           </Autocomplete.InputGroup>
 
           <div className="max-h-[min(20rem,50dvh)] overflow-y-auto p-1">
-            <Autocomplete.Empty className="px-2.5 py-6 text-center text-sm text-muted-foreground">
-              No command goes by that name.
+            {/* The element itself stays mounted whatever the list holds, to announce the
+                change, so what it says is padded rather than it: an empty one takes up no
+                room between the field and the first command. */}
+            <Autocomplete.Empty>
+              <div className="px-2.5 py-6 text-center text-sm text-muted-foreground">
+                No command goes by that name.
+              </div>
             </Autocomplete.Empty>
             <Autocomplete.List>
               {(command: Command) => (
