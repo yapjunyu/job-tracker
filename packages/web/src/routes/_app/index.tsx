@@ -26,6 +26,8 @@ const everyApplication = { ...defaultApplicationListParams, activeOnly: false };
 
 function Home() {
   const [params, setParams] = useState<ApplicationListParams>(defaultApplicationListParams);
+  // One dialog for both ways into it: the button in the band, and the empty state's own.
+  const [addOpen, setAddOpen] = useState(false);
   // Typing stays instant; the list catches up with it.
   const search = useDeferredValue(params.search);
   const asked = useMemo(() => ({ ...params, search }), [params, search]);
@@ -59,6 +61,8 @@ function Home() {
         title="Applications"
         actions={
           <AddApplicationDialog
+            open={addOpen}
+            onOpenChange={setAddOpen}
             trigger={
               <Button size="sm">
                 <PlusIcon data-icon="inline-start" />
@@ -74,7 +78,11 @@ function Home() {
       </PageHeader>
 
       {nothingTracked ? (
-        <EmptyState />
+        <EmptyState
+          onAdd={() => {
+            setAddOpen(true);
+          }}
+        />
       ) : (
         <div className="flex flex-1 flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <ApplicationsFilters params={params} onChange={setParams} searchRef={searchField} />
@@ -135,7 +143,7 @@ function Note({
   );
 }
 
-function EmptyState() {
+function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="grid flex-1 place-items-center px-6 py-16">
       <div className="flex max-w-sm flex-col items-center gap-3 text-center">
@@ -146,14 +154,10 @@ function EmptyState() {
           Add the first role you're after. Every Application you add, from Saved to Offer, shows up
           here.
         </p>
-        <AddApplicationDialog
-          trigger={
-            <Button className="mt-1">
-              <PlusIcon data-icon="inline-start" />
-              Add your first Application
-            </Button>
-          }
-        />
+        <Button className="mt-1" onClick={onAdd}>
+          <PlusIcon data-icon="inline-start" />
+          Add your first Application
+        </Button>
       </div>
     </div>
   );
