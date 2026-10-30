@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
-# Build the web app and bundle the API.
-FROM node:24-alpine AS build
+# Build the web app and bundle the API. Pinned to the build machine's own architecture: what
+# this stage produces is platform-independent JavaScript, so a multi-architecture build runs
+# this stage once instead of emulating it once per architecture.
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 RUN corepack enable
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

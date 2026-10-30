@@ -2,8 +2,9 @@ name: job-tracker
 
 services:
   app:
-    build: .
-    image: job-tracker:local
+    # A published release, so `docker compose up` needs no source tree to build from. APP_IMAGE
+    # in .env chooses which one; compose.build.yaml runs a build of this source tree instead.
+    image: ${APP_IMAGE:-ghcr.io/yapjunyu/job-tracker:latest}
     ports:
       - "${APP_PORT:-3000}:3000"
     env_file:
