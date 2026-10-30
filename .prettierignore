@@ -5,3 +5,4 @@ packages/api/drizzle/meta
 playwright-report
 test-results
 blob-report
+.impeccable

@@ -54,10 +54,13 @@ function FilterSelect<Value extends string>({
       }}
     >
       <SelectTrigger
-        size="sm"
         // Named as a filter, so it isn't taken for the Status of a row or a field of a form.
         aria-label={`Filter by ${label}`}
-        className={value.length > 0 ? "border-ring bg-accent/50" : undefined}
+        className={
+          value.length > 0
+            ? "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+            : undefined
+        }
       >
         <span className="truncate">{summary}</span>
       </SelectTrigger>
@@ -93,8 +96,8 @@ export function ApplicationsFilters({ params, onChange, searchRef }: Application
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 pb-4 sm:px-6">
-      <div className="relative order-first w-full min-w-0 sm:w-56">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="relative w-full min-w-0 sm:w-64">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={searchRef}
@@ -119,97 +122,90 @@ export function ApplicationsFilters({ params, onChange, searchRef }: Application
         />
       </div>
 
-      <FilterSelect
-        label="Status"
-        options={Status.options}
-        labels={statusLabels}
-        value={params.status}
-        onChange={(status) => {
-          onChange(filteredByStatus(params, status));
-        }}
-      />
-      <FilterSelect
-        label="Source"
-        options={Source.options}
-        labels={sourceLabels}
-        value={params.source}
-        onChange={(source) => {
-          onChange({ ...params, source });
-        }}
-      />
-      {companyOptions.length > 0 && (
+      {/* One scrolling rail on a phone; from `sm` up `contents` dissolves it and the
+          controls wrap into the row above as they always did. */}
+      <div className="fade-end flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 sm:contents">
         <FilterSelect
-          label="Company"
-          options={companyOptions}
-          labels={companyLabels}
-          value={params.company}
-          onChange={(company) => {
-            onChange({ ...params, company });
+          label="Status"
+          options={Status.options}
+          labels={statusLabels}
+          value={params.status}
+          onChange={(status) => {
+            onChange(filteredByStatus(params, status));
           }}
         />
-      )}
+        <FilterSelect
+          label="Source"
+          options={Source.options}
+          labels={sourceLabels}
+          value={params.source}
+          onChange={(source) => {
+            onChange({ ...params, source });
+          }}
+        />
+        {companyOptions.length > 0 && (
+          <FilterSelect
+            label="Company"
+            options={companyOptions}
+            labels={companyLabels}
+            value={params.company}
+            onChange={(company) => {
+              onChange({ ...params, company });
+            }}
+          />
+        )}
 
-      {/* Below `sm` the table has no room for the Source and Last change columns, so their
+        {/* Below `sm` the table has no room for the Source and Last change columns, so their
           headers aren't there to sort by: this is how every column stays reachable there. */}
-      <div className="flex items-center gap-1 sm:hidden">
-        <Select
-          value={params.sort}
-          onValueChange={(sort) => {
-            // The list is never emptied, so there is always a column to sort by. Picking
-            // the one it is already sorted by changes nothing, so it never turns around here.
-            if (sort && sort !== params.sort) onChange(sortedBy(params, sort));
-          }}
-        >
-          <SelectTrigger size="sm" aria-label="Sort by">
-            <span className="truncate">{sortLabels[params.sort]}</span>
-          </SelectTrigger>
-          <SelectContent alignItemWithTrigger={false} align="start">
-            {ApplicationSort.options.map((option) => (
-              <SelectItem key={option} value={option}>
-                {sortLabels[option]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="Reverse the order"
-          onClick={() => {
-            onChange({ ...params, direction: params.direction === "asc" ? "desc" : "asc" });
-          }}
-        >
-          {params.direction === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />}
-        </Button>
+        <div className="flex items-center gap-1 sm:hidden">
+          <Select
+            value={params.sort}
+            onValueChange={(sort) => {
+              // The list is never emptied, so there is always a column to sort by. Picking
+              // the one it is already sorted by changes nothing, so it never turns around here.
+              if (sort && sort !== params.sort) onChange(sortedBy(params, sort));
+            }}
+          >
+            <SelectTrigger aria-label="Sort by">
+              <span className="truncate">{sortLabels[params.sort]}</span>
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false} align="start">
+              {ApplicationSort.options.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {sortLabels[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Reverse the order"
+            onClick={() => {
+              onChange({ ...params, direction: params.direction === "asc" ? "desc" : "asc" });
+            }}
+          >
+            {params.direction === "asc" ? <ArrowUpIcon /> : <ArrowDownIcon />}
+          </Button>
+        </div>
+
+        {isFiltered(params) && (
+          <Button
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={() => {
+              onChange({
+                ...defaultApplicationListParams,
+                sort: params.sort,
+                direction: params.direction,
+              });
+            }}
+          >
+            <XIcon data-icon="inline-start" />
+            Clear filters
+          </Button>
+        )}
       </div>
-
-      <Button
-        variant={params.activeOnly ? "outline" : "secondary"}
-        size="sm"
-        aria-pressed={!params.activeOnly}
-        onClick={() => {
-          onChange({ ...params, activeOnly: !params.activeOnly });
-        }}
-      >
-        Show all
-      </Button>
-
-      {isFiltered(params) && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            onChange({
-              ...defaultApplicationListParams,
-              sort: params.sort,
-              direction: params.direction,
-            });
-          }}
-        >
-          <XIcon data-icon="inline-start" />
-          Clear filters
-        </Button>
-      )}
     </div>
   );
 }

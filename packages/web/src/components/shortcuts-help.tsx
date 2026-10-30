@@ -21,7 +21,7 @@ const shortcuts: { keys: string[]; does: string }[] = [
 
 /**
  * What every shortcut does, so none of them has to be discovered by accident. `?` opens it
- * from anywhere on the table, and the button beside the heading is there for the mouse.
+ * from anywhere, and the button in the sidebar is there for the mouse.
  */
 export function ShortcutsHelp({
   open,
@@ -30,27 +30,31 @@ export function ShortcutsHelp({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trigger: ReactElement;
+  /** Left out where the dialog is opened from elsewhere, such as the sidebar. */
+  trigger?: ReactElement;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={trigger} />
-      <DialogContent>
+      {trigger && <DialogTrigger render={trigger} />}
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
           <DialogDescription>
-            Press <Key>?</Key> anywhere on the table to see these again.
+            Press <Key>?</Key> anywhere in the app to see these again.
           </DialogDescription>
         </DialogHeader>
-        <dl className="grid gap-2">
+        <dl className="-mx-1 flex flex-col">
           {shortcuts.map((shortcut) => (
-            <div key={shortcut.does} className="flex items-baseline justify-between gap-4">
+            <div
+              key={shortcut.does}
+              className="flex items-center justify-between gap-6 rounded-md px-1 py-1.5"
+            >
+              <dd className="text-sm text-muted-foreground">{shortcut.does}</dd>
               <dt className="flex shrink-0 gap-1">
                 {shortcut.keys.map((key) => (
                   <Key key={key}>{key}</Key>
                 ))}
               </dt>
-              <dd className="text-right text-muted-foreground">{shortcut.does}</dd>
             </div>
           ))}
         </dl>
@@ -61,7 +65,7 @@ export function ShortcutsHelp({
 
 function Key({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border bg-muted px-1 font-mono text-xs text-foreground">
+    <kbd className="inline-flex h-5 min-w-[1.375rem] items-center justify-center rounded-[4px] border border-border-strong bg-card px-1.5 text-[0.6875rem] font-medium text-foreground shadow-xs">
       {children}
     </kbd>
   );

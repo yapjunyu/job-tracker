@@ -20,3 +20,9 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Impeccable design-skill working state. The surface briefs under .impeccable/surfaces are
+# design decisions and stay in the repository; everything else here is per-machine scratch.
+**/.impeccable/hook.cache.json
+**/.impeccable/questions/
+**/.impeccable/review/
