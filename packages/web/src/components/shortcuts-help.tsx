@@ -7,9 +7,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { commandKeyLabel } from "@/lib/shortcuts";
 
-/** Every shortcut the table answers, in the order a job seeker would reach for them. */
+/** Every shortcut the app answers, in the order a job seeker would reach for them. */
 const shortcuts: { keys: string[]; does: string }[] = [
+  { keys: [commandKeyLabel, "K"], does: "Open the command palette, wherever you are" },
   { keys: ["/"], does: "Search by role title or Company" },
   { keys: ["Esc"], does: "Leave the search field, keeping what you typed" },
   { keys: ["j", "↓"], does: "Move to the next Application" },
