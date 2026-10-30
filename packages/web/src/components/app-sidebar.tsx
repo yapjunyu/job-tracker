@@ -110,12 +110,11 @@ export function AppSidebar({
             {email}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <ThemeToggle />
           <Button
             variant="ghost"
             size="icon-sm"
-            className="ml-auto"
             aria-label="Keyboard shortcuts"
             aria-keyshortcuts="?"
             onClick={onShowShortcuts}

@@ -17,11 +17,11 @@
       // one. The key matches `themeStorageKey` in src/lib/theme.ts.
       (function () {
         try {
+          // Anything but a theme the job seeker picked means follow the device.
           var saved = localStorage.getItem("job-tracker:theme");
           var dark =
             saved === "dark" ||
-            ((saved === null || saved === "system") &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches);
+            (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
           if (dark) document.documentElement.classList.add("dark");
         } catch (error) {
           // No storage: the stylesheet's own light default stands.

@@ -115,7 +115,9 @@
         "role": "secondary",
         "displayName": "Nothing Sent Yet",
         "canonical": "#e3e8ee",
-        "statuses": ["saved"],
+        "statuses": [
+          "saved"
+        ],
         "darkPair": "badge-neutral-dark",
         "tonalRamp": [
           "#1a1e27",
@@ -132,7 +134,9 @@
         "role": "secondary",
         "displayName": "Waiting On The Company",
         "canonical": "#d6ecff",
-        "statuses": ["applied"],
+        "statuses": [
+          "applied"
+        ],
         "darkPair": "badge-blue-dark",
         "tonalRamp": [
           "#0a1529",
@@ -149,7 +153,9 @@
         "role": "secondary",
         "displayName": "Being Assessed",
         "canonical": "#c4f2f0",
-        "statuses": ["assessment"],
+        "statuses": [
+          "assessment"
+        ],
         "darkPair": "badge-teal-dark",
         "tonalRamp": [
           "#061d1b",
@@ -166,7 +172,9 @@
         "role": "secondary",
         "displayName": "In Process",
         "canonical": "#e6e6fc",
-        "statuses": ["interviewing"],
+        "statuses": [
+          "interviewing"
+        ],
         "darkPair": "badge-purple-dark",
         "tonalRamp": [
           "#120f2b",
@@ -183,7 +191,9 @@
         "role": "secondary",
         "displayName": "A Win Pending",
         "canonical": "#cbf4c9",
-        "statuses": ["offer"],
+        "statuses": [
+          "offer"
+        ],
         "darkPair": "badge-green-dark",
         "tonalRamp": [
           "#04150d",
@@ -200,7 +210,9 @@
         "role": "secondary",
         "displayName": "The Win Itself",
         "canonical": "#0e6245",
-        "statuses": ["accepted"],
+        "statuses": [
+          "accepted"
+        ],
         "darkPair": "badge-green-solid-dark",
         "purpose": "The only solid-filled badge in the app: the Status the whole search is for."
       },
@@ -208,7 +220,9 @@
         "role": "secondary",
         "displayName": "An Ending They Chose",
         "canonical": "#fde2dd",
-        "statuses": ["rejected"],
+        "statuses": [
+          "rejected"
+        ],
         "darkPair": "badge-red-dark",
         "tonalRamp": [
           "#1c0810",
@@ -225,7 +239,10 @@
         "role": "secondary",
         "displayName": "An Ending You Chose",
         "canonical": "#ebeef1",
-        "statuses": ["declined", "withdrawn"],
+        "statuses": [
+          "declined",
+          "withdrawn"
+        ],
         "darkPair": "badge-slate-dark",
         "tonalRamp": [
           "#14171d",
@@ -262,7 +279,13 @@
         "displayName": "Chart Ramp (reserved)",
         "canonical": "#635bff",
         "purpose": "Defined and unrendered. Walks the accent out towards the canvas so the first chart inherits the app's one colour.",
-        "tonalRamp": ["#635bff", "#8b85ff", "#0b6e68", "#0055bc", "#a3acbc"]
+        "tonalRamp": [
+          "#635bff",
+          "#8b85ff",
+          "#0b6e68",
+          "#0055bc",
+          "#a3acbc"
+        ]
       }
     },
     "typographyMeta": {
@@ -300,7 +323,11 @@
         "family": "Geist Variable",
         "stack": "\"Geist Variable\", ui-sans-serif, system-ui, sans-serif",
         "source": "@fontsource-variable/geist, self-hosted",
-        "weights": [400, 500, 600],
+        "weights": [
+          400,
+          500,
+          600
+        ],
         "purpose": "The only typeface in the app. No display face, no mono. --font-heading resolves to the same family."
       }
     ],
@@ -369,9 +396,21 @@
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "40rem", "purpose": "Company column appears; gutters widen to 1.5rem; count pills take their fill; the scrolling rails and their .fade-end mask dissolve." },
-      { "name": "md", "value": "48rem", "purpose": "Source and Last change columns appear; input type drops from 16px to 14px." },
-      { "name": "lg", "value": "64rem", "purpose": "The 15rem sidebar column appears and the mobile header plus drawer disappear." }
+      {
+        "name": "sm",
+        "value": "40rem",
+        "purpose": "Company column appears; gutters widen to 1.5rem; count pills take their fill; the scrolling rails and their .fade-end mask dissolve."
+      },
+      {
+        "name": "md",
+        "value": "48rem",
+        "purpose": "Source and Last change columns appear; input type drops from 16px to 14px."
+      },
+      {
+        "name": "lg",
+        "value": "64rem",
+        "purpose": "The 15rem sidebar column appears and the mobile header plus drawer disappear."
+      }
     ],
     "layout": {
       "shell": "lg+: grid [15rem minmax(0,1fr)] with a sticky full-height sidebar. Below lg: a 3.5rem sticky header and a 17rem (max 85vw) left drawer holding the identical AppSidebar.",
@@ -441,9 +480,9 @@
       "name": "Theme Toggle",
       "kind": "custom",
       "refersTo": "nav-item",
-      "description": "Three-way: match my device, light, dark. All three are shown at once rather than cycled, so the job seeker can see which is in force without pressing anything.",
-      "html": "<div class=\"ds-theme\" role=\"radiogroup\" aria-label=\"Theme\"><button class=\"ds-theme-seg\" role=\"radio\" aria-checked=\"true\" aria-label=\"Match my device\" title=\"Match my device\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M2 20h20\"/></svg></button><button class=\"ds-theme-seg\" role=\"radio\" aria-checked=\"false\" aria-label=\"Light\" title=\"Light\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4\"/></svg></button><button class=\"ds-theme-seg\" role=\"radio\" aria-checked=\"false\" aria-label=\"Dark\" title=\"Dark\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></button></div>",
-      "css": ".ds-theme { display: inline-flex; align-items: center; gap: 0.125rem; padding: 0.125rem; border: 1px solid var(--border, #e3e8ee); border-radius: var(--radius-md, 0.3rem); background: var(--background, #f6f8fa); } .ds-theme-seg { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border: 0; border-radius: 4px; background: none; color: var(--muted-foreground, #5f6b7c); cursor: pointer; transition: background-color 0.15s, color 0.15s; } .ds-theme-seg svg { width: 0.875rem; height: 0.875rem; } .ds-theme-seg:hover { background: var(--accent, #e9edf3); color: var(--foreground, #1a1f36); } .ds-theme-seg:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--background, #f6f8fa), 0 0 0 3px var(--ring, #635bff); } .ds-theme-seg[aria-checked=\"true\"] { background: var(--sidebar-accent, #f0effe); color: var(--sidebar-accent-foreground, #4b44d6); }"
+      "description": "One ghost icon button that switches between light and dark. The icon is the theme the press would switch to, not the one in force: which theme is in force is already obvious from the page around it. There is no third setting — the device decides the starting theme until the job seeker picks one, after which their choice is remembered.",
+      "html": "<button class=\"ds-theme-toggle\" type=\"button\" aria-label=\"Switch to the dark theme\" title=\"Switch to the dark theme\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></button>",
+      "css": ".ds-theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; padding: 0; border: 1px solid transparent; border-radius: var(--radius-md, 0.3rem); background: transparent; color: var(--sidebar-foreground, #3c4257); cursor: pointer; transition: background-color 150ms ease, color 150ms ease; } .ds-theme-toggle:hover { background: var(--accent, #e9edf3); color: var(--foreground, #1a1f36); } .ds-theme-toggle:focus-visible { outline: none; border-color: var(--ring, #635bff); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring, #635bff) 50%, transparent); } .ds-theme-toggle:active { transform: translateY(1px); } .ds-theme-toggle svg { width: 1rem; height: 1rem; flex-shrink: 0; }"
     },
     {
       "name": "Brand Mark",
