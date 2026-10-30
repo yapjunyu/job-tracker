@@ -1,0 +1,67 @@
+name: Release
+
+# A version tag publishes a public image anyone can self-host. See the README's self-hosting
+# section for how a self-hoster pulls and updates it.
+on:
+  push:
+    # Semver tags only. A tag such as `vnext` would leave metadata-action with no image tag to
+    # apply, and the push would then fail.
+    tags: ["v[0-9]*"]
+
+concurrency:
+  # One release at a time, so two tags pushed close together can't race for `latest`.
+  group: release
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: Publish the image to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Every tag, so the next step can tell whether this is the newest release.
+          fetch-depth: 0
+      - name: Work out whether this is the newest release
+        id: newest
+        # `latest` has to mean the newest release, because that is what a self-hoster who
+        # hasn't pinned a version follows. Tagging a patch on an older line, such as v1.1.5
+        # after v1.2.0, therefore publishes only its own version and leaves `latest` alone:
+        # moving `latest` backwards would downgrade those copies, and a downgraded copy
+        # refuses to start against the database the newer one migrated.
+        run: |
+          newest=$(git tag --list | grep --extended-regexp '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort --version-sort | tail --lines=1)
+          if [ "$newest" = "$GITHUB_REF_NAME" ]; then latest=true; else latest=false; fi
+          echo "Publishing $GITHUB_REF_NAME; newest release tag is ${newest:-none}; latest=$latest"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Work out the image tags
+        id: tags
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # An exact version to pin to, plus `latest` to follow. There are deliberately no
+          # rolling `1` or `1.2` tags: a patch to an older line would move them backwards.
+          tags: type=semver,pattern={{version}}
+          flavor: latest=${{ steps.newest.outputs.latest }}
+      # Both architectures, so the image runs on an Intel server and on an Apple Silicon Mac.
+      # Only the final stage is built per architecture: the app itself is built once, on the
+      # runner's own architecture. The Dockerfile says why that is safe.
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.tags.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

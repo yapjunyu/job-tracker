@@ -1,0 +1,8 @@
+# Runs a build of this source tree in place of the published release image:
+#   docker compose --file compose.yaml --file compose.build.yaml up --build
+# Development itself doesn't need this; `pnpm dev` runs the app from source with hot reload.
+
+services:
+  app:
+    build: .
+    image: job-tracker:local
