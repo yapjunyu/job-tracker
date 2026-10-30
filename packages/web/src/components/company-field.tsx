@@ -48,7 +48,7 @@ export function CompanyField({ id, name, defaultValue, placeholder }: CompanyFie
       />
       <Autocomplete.Portal>
         <Autocomplete.Positioner sideOffset={4} className="isolate z-50">
-          <Autocomplete.Popup className="max-h-(--available-height) w-(--anchor-width) overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10">
+          <Autocomplete.Popup className="max-h-(--available-height) w-(--anchor-width) overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-border">
             <Autocomplete.List>
               {(company: string) => (
                 <Autocomplete.Item

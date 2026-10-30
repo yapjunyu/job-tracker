@@ -1,11 +1,12 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { KeyboardIcon } from "lucide-react";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { MenuIcon } from "lucide-react";
 import { useState } from "react";
-import { signOut } from "@/api/auth";
 import { meQuery } from "@/api/me";
+import { AppSidebar } from "@/components/app-sidebar";
+import { BrandMark } from "@/components/brand-mark";
 import { ShortcutsHelp } from "@/components/shortcuts-help";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
 import { useShortcuts } from "@/lib/shortcuts";
 
@@ -24,65 +25,56 @@ function AppShell() {
   // Every page of the app has a table of Applications on it, so the shortcuts and the list
   // of them belong to the app rather than to the home screen alone.
   const [helpOpen, setHelpOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   useShortcuts((event) => {
     if (event.key !== "?") return;
     event.preventDefault();
     setHelpOpen((open) => !open);
   });
 
+  // On a phone the navigation lives in the drawer, so anything opened from it has to send
+  // the drawer away first or it would open behind it.
+  const showShortcuts = () => {
+    setMenuOpen(false);
+    setHelpOpen(true);
+  };
+
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="flex h-12 items-center justify-between gap-4 border-b px-4">
-        <span className="font-semibold tracking-tight">job-tracker</span>
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="hidden truncate text-sm text-muted-foreground sm:inline">
-            {user.email}
-          </span>
-          <ShortcutsHelp
-            open={helpOpen}
-            onOpenChange={setHelpOpen}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Keyboard shortcuts"
-                aria-keyshortcuts="?"
-              >
-                <KeyboardIcon />
-              </Button>
-            }
-          />
-          <SignOutButton />
-        </div>
-      </header>
-      <Outlet />
+    <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh border-r border-sidebar-border lg:block">
+        <AppSidebar email={user.email} onShowShortcuts={showShortcuts} />
+      </aside>
+
+      <div className="flex min-h-dvh min-w-0 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-sidebar px-3 lg:hidden">
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger
+              render={
+                <Button variant="ghost" size="icon-sm" aria-label="Open the navigation">
+                  <MenuIcon />
+                </Button>
+              }
+            />
+            <SheetContent>
+              <SheetTitle>Navigation</SheetTitle>
+              <AppSidebar
+                email={user.email}
+                onNavigate={() => {
+                  setMenuOpen(false);
+                }}
+                onShowShortcuts={showShortcuts}
+              />
+            </SheetContent>
+          </Sheet>
+          <BrandMark className="size-5" />
+          <span className="font-semibold tracking-tight">job-tracker</span>
+        </header>
+
+        <Outlet />
+      </div>
+
+      <ShortcutsHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <Toaster position="bottom-right" />
     </div>
-  );
-}
-
-function SignOutButton() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const signOutMutation = useMutation({
-    mutationFn: async () => {
-      await signOut();
-      // Leave nothing of this user's behind for whoever uses the device next.
-      queryClient.removeQueries();
-      await navigate({ to: "/sign-in" });
-    },
-  });
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={signOutMutation.isPending}
-      onClick={() => {
-        signOutMutation.mutate();
-      }}
-    >
-      Sign out
-    </Button>
   );
 }

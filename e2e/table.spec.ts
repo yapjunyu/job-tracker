@@ -79,7 +79,9 @@ test("the table shows only active Applications, and all of them at one click", a
   // Latest Status Change first, and the rejected one is nowhere in the list.
   await expect(roleTitles(page)).toHaveText([/Data Intern/, /Frontend Intern/, /Backend Intern/]);
 
-  await page.getByRole("button", { name: "Show all" }).click();
+  // The counts row is both how the search reads and how it is narrowed: All takes in the
+  // Applications that have finished.
+  await page.getByRole("tab", { name: "All" }).click();
 
   await expect(roleTitles(page)).toHaveText([
     /Platform Intern/,

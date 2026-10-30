@@ -7,8 +7,27 @@
       name="description"
       content="A personal tracker for a job search: every Application, from Saved to Offer."
     />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f8fa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#11141c" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>job-tracker</title>
+    <script>
+      // Applies the saved theme before the first paint, so the app never flashes the wrong
+      // one. The key matches `themeStorageKey` in src/lib/theme.ts.
+      (function () {
+        try {
+          // Anything but a theme the job seeker picked means follow the device.
+          var saved = localStorage.getItem("job-tracker:theme");
+          var dark =
+            saved === "dark" ||
+            (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (error) {
+          // No storage: the stylesheet's own light default stands.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

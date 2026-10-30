@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDay, sortLabels, sourceLabels } from "@/lib/display";
+import { formatAge, formatDayAndTime, sortLabels, sourceLabels } from "@/lib/display";
 import { useShortcuts } from "@/lib/shortcuts";
 
 /** How the table is sorted, and what a click on a column header asks for. */
@@ -124,27 +124,31 @@ export function ApplicationsTable({
   });
 
   return (
-    <Table ref={table} className="border-t">
+    <Table ref={table}>
       <TableHeader>
-        <TableRow>
-          <ColumnHead column="roleTitle" sorting={sorting} className="pl-4 sm:pl-6">
+        <TableRow className="hover:bg-transparent">
+          <ColumnHead
+            column="roleTitle"
+            sorting={sorting}
+            className="w-full pl-3 sm:w-[30%] sm:pl-4"
+          >
             {sortLabels.roleTitle}
           </ColumnHead>
           {showCompany && (
-            <ColumnHead column="company" sorting={sorting}>
+            <ColumnHead column="company" sorting={sorting} className="hidden w-[22%] sm:table-cell">
               {sortLabels.company}
             </ColumnHead>
           )}
           <ColumnHead column="status" sorting={sorting}>
             {sortLabels.status}
           </ColumnHead>
-          <ColumnHead column="source" sorting={sorting} className="hidden sm:table-cell">
+          <ColumnHead column="source" sorting={sorting} className="hidden md:table-cell">
             {sortLabels.source}
           </ColumnHead>
           <ColumnHead
             column="statusChangedAt"
             sorting={sorting}
-            className="hidden pr-4 sm:pr-6 md:table-cell"
+            className="hidden pr-3 sm:pr-4 md:table-cell"
           >
             {sortLabels.statusChangedAt}
           </ColumnHead>
@@ -164,36 +168,36 @@ export function ApplicationsTable({
             onFocus={() => {
               setKeyboardOn(application.id);
             }}
-            className="outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            className="outline-none focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-inset"
           >
-            <TableCell className="py-0 pl-4 font-medium sm:pl-6">
+            <TableCell className="w-full max-w-0 py-0 pl-3 font-medium sm:w-[30%] sm:pl-4">
               {application.pending ? (
                 // There is no Application behind this row's id until the server answers,
                 // so it has nowhere to lead yet.
-                <span className="-mx-2 block px-2 py-2.5">
-                  <RoleTitle application={application} />
+                <span className="-mx-1.5 block px-1.5 py-2">
+                  <RoleTitle application={application} showCompany={showCompany} />
                 </span>
               ) : (
                 <Link
                   to="/applications/$applicationId"
                   params={{ applicationId: application.id }}
                   // The whole cell is the target, so the row is easy to hit on a phone.
-                  className="-mx-2 block px-2 py-2.5 hover:underline"
+                  className="-mx-1.5 block rounded-sm px-1.5 py-2 outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <RoleTitle application={application} />
+                  <RoleTitle application={application} showCompany={showCompany} />
                 </Link>
               )}
             </TableCell>
             {showCompany && (
-              <TableCell>
+              <TableCell className="hidden w-[22%] max-w-0 text-muted-foreground sm:table-cell">
                 {application.pending ? (
                   // Nor is there a Company behind it yet, if its name is a new one.
-                  application.company.name
+                  <span className="block truncate">{application.company.name}</span>
                 ) : (
                   <Link
                     to="/companies/$companyId"
                     params={{ companyId: application.company.id }}
-                    className="hover:underline"
+                    className="block truncate rounded-sm outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {application.company.name}
                   </Link>
@@ -211,6 +215,7 @@ export function ApplicationsTable({
                     else statuses.current.delete(application.id);
                   }}
                   status={application.status}
+                  inTable
                   label={`Status of ${application.roleTitle} at ${application.company.name}`}
                   onChange={(status) => {
                     changeStatus.mutate({ applicationId: application.id, status });
@@ -218,11 +223,14 @@ export function ApplicationsTable({
                 />
               )}
             </TableCell>
-            <TableCell className="hidden text-muted-foreground sm:table-cell">
+            <TableCell className="hidden text-muted-foreground md:table-cell">
               {application.source ? sourceLabels[application.source] : "—"}
             </TableCell>
-            <TableCell className="hidden pr-4 text-muted-foreground sm:pr-6 md:table-cell">
-              {formatDay(application.statusChangedAt)}
+            <TableCell
+              className="hidden pr-3 text-muted-foreground sm:pr-4 md:table-cell"
+              title={formatDayAndTime(application.statusChangedAt)}
+            >
+              {formatAge(application.statusChangedAt)}
             </TableCell>
           </TableRow>
         ))}
@@ -247,7 +255,7 @@ function ColumnHead({
   children: string;
 }) {
   if (!sorting) {
-    return <TableHead className={className}>{children}</TableHead>;
+    return <TableHead className={cn("label-micro", className)}>{children}</TableHead>;
   }
 
   const sortedByThis = sorting.sort === column;
@@ -257,34 +265,40 @@ function ColumnHead({
     <TableHead
       aria-sort={sortedByThis ? (sorting.direction === "asc" ? "ascending" : "descending") : "none"}
       className={cn("p-0", className)}
-      data-sorted={sortedByThis ? "" : undefined}
     >
       <button
         type="button"
         onClick={() => {
           sorting.onSort(column);
         }}
-        className="flex h-10 w-full items-center gap-1 px-2 font-medium outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-sorted:text-foreground"
+        className="label-micro flex h-9 w-full items-center gap-1 rounded-sm px-1.5 transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-sorted:text-foreground"
         data-sorted={sortedByThis ? "" : undefined}
       >
-        <span className={sortedByThis ? undefined : "text-muted-foreground"}>{children}</span>
-        {sortedByThis && <Arrow className="size-3.5 shrink-0" aria-hidden />}
+        {children}
+        {sortedByThis && <Arrow className="size-3 shrink-0" aria-hidden />}
       </button>
     </TableHead>
   );
 }
 
 /**
- * The role title, and under it the two columns a phone has no room for, so every Application
- * still shows its Source and the time of its latest Status Change at any width.
+ * The role title, and under it whatever this width has no column for, so every Application
+ * still shows its Company, its Source and the age of its latest Status Change at any width.
  */
-function RoleTitle({ application }: { application: ApplicationRow }) {
+function RoleTitle({
+  application,
+  showCompany,
+}: {
+  application: ApplicationRow;
+  showCompany: boolean;
+}) {
+  const source = application.source ? sourceLabels[application.source] : "No Source";
   return (
     <>
-      {application.roleTitle}
-      <span className="mt-0.5 block text-xs font-normal text-muted-foreground sm:hidden">
-        {application.source ? sourceLabels[application.source] : "No Source"} ·{" "}
-        {formatDay(application.statusChangedAt)}
+      <span className="block truncate">{application.roleTitle}</span>
+      <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground md:hidden">
+        {showCompany && <span className="sm:hidden">{application.company.name} · </span>}
+        {source} · {formatAge(application.statusChangedAt)}
       </span>
     </>
   );
