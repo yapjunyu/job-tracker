@@ -88,7 +88,7 @@ export function AppSidebar({
                 >
                   <Icon className="size-4 shrink-0" aria-hidden />
                   {label}
-                  <span className="ml-auto rounded-[4px] border border-border px-1 py-px text-[0.625rem] font-medium tracking-wide text-muted-foreground uppercase">
+                  <span className="ml-auto rounded-[4px] border border-border px-1 py-px text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">
                     Soon
                   </span>
                 </span>
