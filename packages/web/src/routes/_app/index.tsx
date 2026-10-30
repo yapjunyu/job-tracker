@@ -9,7 +9,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PlusIcon, SearchXIcon } from "lucide-react";
 import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { applicationsQuery } from "@/api/applications";
-import { AddApplicationDialog } from "@/components/add-application-dialog";
 import { ApplicationsFilters } from "@/components/applications-filters";
 import { ApplicationsSummary } from "@/components/applications-summary";
 import { ApplicationsTable, type TableSorting } from "@/components/applications-table";
@@ -17,6 +16,7 @@ import { PageHeader } from "@/components/page-header";
 import { BlurText } from "@/components/react-bits/blur-text";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { Button } from "@/components/ui/button";
+import { useQuickAdd } from "@/lib/quick-add";
 import { useShortcuts } from "@/lib/shortcuts";
 
 export const Route = createFileRoute("/_app/")({ component: Home });
@@ -26,8 +26,7 @@ const everyApplication = { ...defaultApplicationListParams, activeOnly: false };
 
 function Home() {
   const [params, setParams] = useState<ApplicationListParams>(defaultApplicationListParams);
-  // One dialog for both ways into it: the button in the band, and the empty state's own.
-  const [addOpen, setAddOpen] = useState(false);
+  const openQuickAdd = useQuickAdd();
   // Typing stays instant; the list catches up with it.
   const search = useDeferredValue(params.search);
   const asked = useMemo(() => ({ ...params, search }), [params, search]);
@@ -60,16 +59,10 @@ function Home() {
       <PageHeader
         title="Applications"
         actions={
-          <AddApplicationDialog
-            open={addOpen}
-            onOpenChange={setAddOpen}
-            trigger={
-              <Button size="sm">
-                <PlusIcon data-icon="inline-start" />
-                Add Application
-              </Button>
-            }
-          />
+          <Button size="sm" onClick={openQuickAdd}>
+            <PlusIcon data-icon="inline-start" />
+            Add Application
+          </Button>
         }
       >
         {all.data && all.data.length > 0 && (
@@ -78,11 +71,7 @@ function Home() {
       </PageHeader>
 
       {nothingTracked ? (
-        <EmptyState
-          onAdd={() => {
-            setAddOpen(true);
-          }}
-        />
+        <EmptyState onAdd={openQuickAdd} />
       ) : (
         <div className="flex flex-1 flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <ApplicationsFilters params={params} onChange={setParams} searchRef={searchField} />

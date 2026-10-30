@@ -98,7 +98,7 @@ test("the Application quick add saved is on the table before the server answers"
 }) => {
   const page = await openPage(browser, "/");
   // The save is held open, so whatever is on the table is there without a server answer.
-  let letTheServerAnswer = () => {};
+  let letTheServerAnswer!: () => void;
   const held = new Promise<void>((resolve) => {
     letTheServerAnswer = resolve;
   });
@@ -121,4 +121,27 @@ test("the Application quick add saved is on the table before the server answers"
   await expect(
     page.getByRole("combobox", { name: "Status of Design Intern at Carousell" }),
   ).toBeVisible();
+});
+
+test("Cmd+K opens the palette too, for a job seeker on a Mac", async ({ browser }) => {
+  const page = await openPage(browser, "/");
+
+  await page.keyboard.press("Meta+k");
+
+  await expect(page.getByRole("dialog", { name: "Command palette" })).toBeVisible();
+});
+
+test("a second Ctrl+K leaves a half-written Application alone", async ({ browser }) => {
+  const page = await openPage(browser, "/");
+  await page.keyboard.press("Control+k");
+  await page.keyboard.press("Enter");
+  const form = page.getByRole("dialog", { name: "Add an Application" });
+  await expect(form).toBeVisible();
+  await page.keyboard.type("Backend Intern");
+
+  await page.keyboard.press("Control+k");
+
+  // The form is still there with what was typed in it, and nothing is stacked over it.
+  await expect(page.getByRole("dialog", { name: "Command palette" })).toBeHidden();
+  await expect(form.getByLabel("Role title")).toHaveValue("Backend Intern");
 });
