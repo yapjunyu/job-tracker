@@ -15,7 +15,7 @@ import {
   Source,
   Status,
 } from "@job-tracker/shared";
-import { and, desc, eq, inArray, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { SignedIn } from "./auth";
 import type { Database } from "./database/database";
@@ -74,9 +74,11 @@ function withIsoStatusChangedAt<Row extends { statusChangedAt: Date }>(row: Row)
  * Ghosted filter can't disagree with the labels on the rows it answers with.
  */
 function hasGoneQuiet(rule: GhostedRule): SQL {
-  const before = ghostedBefore(rule.thresholdDays, rule.now);
   const waitingOnTheCompany = inArray(applications.currentStatus, [...ghostableStatuses]);
-  return sql`(${waitingOnTheCompany} and ${applications.statusChangedAt} < ${before})`;
+  // `lt` rather than a `<` written out, so the moment reaches the database as the column's
+  // own kind of time rather than as a Date the driver has no idea what to do with.
+  const quietSince = lt(applications.statusChangedAt, ghostedBefore(rule.thresholdDays, rule.now));
+  return sql`(${waitingOnTheCompany} and ${quietSince})`;
 }
 
 /** Matches the user's Company with this name, whatever its letter case. */
