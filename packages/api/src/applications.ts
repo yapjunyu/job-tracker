@@ -7,16 +7,20 @@ import {
   ApplicationSummary,
   ErrorMessage,
   finalStatuses,
+  ghostableStatuses,
+  ghostedBefore,
+  isGhosted,
   latestStatusChange,
   NewApplication,
   Source,
   Status,
 } from "@job-tracker/shared";
-import { and, desc, eq, inArray, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { SignedIn } from "./auth";
 import type { Database } from "./database/database";
 import { applications, companies, statusChanges } from "./database/schema";
+import { findSettings } from "./settings";
 
 export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
@@ -37,8 +41,44 @@ const detailColumns = {
   jobDescription: applications.jobDescription,
 };
 
+/**
+ * The Ghosted rule as one request reads it: this job seeker's Ghosted threshold, and the
+ * moment the request is answered. Ghosted is never stored, so every read works it out, and
+ * reading the rule once a request keeps every Application in one answer on one moment.
+ */
+interface GhostedRule {
+  thresholdDays: number;
+  now: Date;
+}
+
+async function ghostedRuleFor(database: Database, userId: string): Promise<GhostedRule> {
+  const { ghostedThresholdDays } = await findSettings(database, userId);
+  return { thresholdDays: ghostedThresholdDays, now: new Date() };
+}
+
+/** The Ghosted label, by the same rule the browser labels an unanswered change with. */
+function withGhosted<Row extends { status: Status; statusChangedAt: Date }>(
+  row: Row,
+  rule: GhostedRule,
+) {
+  return { ...row, ghosted: isGhosted(row, rule.thresholdDays, rule.now) };
+}
+
 function withIsoStatusChangedAt<Row extends { statusChangedAt: Date }>(row: Row) {
   return { ...row, statusChangedAt: row.statusChangedAt.toISOString() };
+}
+
+/**
+ * The Ghosted rule as the database asks it: waiting on the Company, and quiet since before the
+ * threshold. The moment comes from the same `ghostedBefore` the label goes through, so the
+ * Ghosted filter can't disagree with the labels on the rows it answers with.
+ */
+function hasGoneQuiet(rule: GhostedRule): SQL {
+  const waitingOnTheCompany = inArray(applications.currentStatus, [...ghostableStatuses]);
+  // `lt` rather than a `<` written out, so the moment reaches the database as the column's
+  // own kind of time rather than as a Date the driver has no idea what to do with.
+  const quietSince = lt(applications.statusChangedAt, ghostedBefore(rule.thresholdDays, rule.now));
+  return sql`(${waitingOnTheCompany} and ${quietSince})`;
 }
 
 /** Matches the user's Company with this name, whatever its letter case. */
@@ -210,12 +250,18 @@ function orderBy(params: ApplicationListParams): SQL[] {
  * Filters combine: an Application has to match all of them, the active-only view included.
  * Asking for a final Status is what `filteredByStatus` turns active-only off for.
  */
-function conditionsFor(params: ApplicationListParams): (SQL | undefined)[] {
+function conditionsFor(params: ApplicationListParams, rule: GhostedRule): (SQL | undefined)[] {
   return [
     params.status.length > 0 ? inArray(applications.currentStatus, params.status) : undefined,
     params.activeOnly ? notInArray(applications.currentStatus, [...finalStatuses]) : undefined,
     params.source.length > 0 ? inArray(applications.source, params.source) : undefined,
     params.company.length > 0 ? inArray(applications.companyId, params.company) : undefined,
+    // Ghosted is worked out rather than stored, so the filter is the rule itself, in the query.
+    params.ghosted === null
+      ? undefined
+      : params.ghosted
+        ? hasGoneQuiet(rule)
+        : sql`not ${hasGoneQuiet(rule)}`,
     // `strpos` rather than `like`, so a `%` or `_` the job seeker types is matched as itself.
     params.search
       ? or(
@@ -236,13 +282,14 @@ export async function listApplications(
   userId: string,
   params: ApplicationListParams,
 ) {
+  const rule = await ghostedRuleFor(database, userId);
   const rows = await database
     .select(summaryColumns)
     .from(applications)
     .innerJoin(companies, eq(companies.id, applications.companyId))
-    .where(and(eq(applications.userId, userId), ...conditionsFor(params)))
+    .where(and(eq(applications.userId, userId), ...conditionsFor(params, rule)))
     .orderBy(...orderBy(params));
-  return rows.map(withIsoStatusChangedAt);
+  return rows.map((row) => withIsoStatusChangedAt(withGhosted(row, rule)));
 }
 
 /** `undefined` both for an Application that doesn't exist and for another user's. */
@@ -264,7 +311,7 @@ export async function findApplication(database: Database, userId: string, id: st
     .where(eq(statusChanges.applicationId, id))
     .orderBy(desc(statusChanges.occurredAt), desc(statusChanges.recordedAt));
   return {
-    ...withIsoStatusChangedAt(row),
+    ...withIsoStatusChangedAt(withGhosted(row, await ghostedRuleFor(database, userId))),
     statusChanges: history.map((change) => ({
       ...change,
       occurredAt: change.occurredAt.toISOString(),

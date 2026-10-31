@@ -30,6 +30,10 @@ function commaSeparated<Value extends z.ZodType<unknown, string>>(value: Value) 
     .pipe(z.array(value));
 }
 
+/** A filter that is a yes or a no, as a query string carries one. */
+const yesOrNo = z.enum(["true", "false"]);
+const isYes = (asked: z.infer<typeof yesOrNo>) => asked === "true";
+
 /**
  * How the table asks for its rows: which Applications it wants and in what order. Sorting,
  * filtering and search all happen in the API, so these are the only things that decide what
@@ -43,11 +47,13 @@ export const ApplicationListParams = z.object({
   source: commaSeparated(Source),
   /** Company ids, as the Company filter and a Company view name them. */
   company: commaSeparated(z.uuid()),
+  /**
+   * Narrows the table to the Applications that have gone quiet, or to those that have not.
+   * Left out of a request it is `null`, which filters on Ghosted neither way round.
+   */
+  ghosted: yesOrNo.optional().transform((asked) => (asked === undefined ? null : isYes(asked))),
   /** Hides Applications in a final Status, which is what the table shows until asked not to. */
-  activeOnly: z
-    .enum(["true", "false"])
-    .default("true")
-    .transform((value) => value === "true"),
+  activeOnly: yesOrNo.default("true").transform(isYes),
   sort: ApplicationSort.default(defaultSort),
   direction: SortDirection.default(defaultDirection),
 });
@@ -100,6 +106,7 @@ export function isFiltered(params: ApplicationListParams): boolean {
     params.status.length > 0 ||
     params.source.length > 0 ||
     params.company.length > 0 ||
+    params.ghosted !== null ||
     !params.activeOnly
   );
 }
@@ -117,6 +124,7 @@ export function applicationListQuery(params: ApplicationListParams): string {
   if (params.status.length > 0) ask("status", params.status.join(","));
   if (params.source.length > 0) ask("source", params.source.join(","));
   if (params.company.length > 0) ask("company", params.company.join(","));
+  if (params.ghosted !== null) ask("ghosted", params.ghosted ? "true" : "false");
   if (!params.activeOnly) ask("activeOnly", "false");
   if (params.sort !== defaultSort) ask("sort", params.sort);
   if (params.direction !== defaultDirection) ask("direction", params.direction);

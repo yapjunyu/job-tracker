@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { KeyboardIcon, MenuIcon, PlusIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 import { meQuery } from "@/api/me";
+import { settingsQuery } from "@/api/settings";
 import { AddApplicationDialog } from "@/components/add-application-dialog";
 import { AppSidebar } from "@/components/app-sidebar";
 import { BrandMark } from "@/components/brand-mark";
@@ -18,6 +19,11 @@ export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ context }) => {
     const user = await context.queryClient.query(meQuery);
     if (!user) throw redirect({ to: "/sign-in" });
+    // The Ghosted threshold is what labels a change the server hasn't answered yet, so it is
+    // on its way before the first Application is shown — and never in the way, since every
+    // label the API answers with has already been worked out with it. The Settings page,
+    // which has nothing to show without it, waits for it itself.
+    void context.queryClient.query(settingsQuery).catch(() => undefined);
     return { user };
   },
   component: AppShell,

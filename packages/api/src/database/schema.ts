@@ -1,9 +1,18 @@
 // Drizzle table definitions. Tables arrive with the tickets that need them; run
 // `pnpm --filter @job-tracker/api db:generate` after changing this file.
 // Migrations are additive only: never rename or drop a table or column.
-import { Source, Status } from "@job-tracker/shared";
+import { defaultGhostedThresholdDays, Source, Status } from "@job-tracker/shared";
 import { sql } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -137,3 +146,16 @@ export const statusChanges = pgTable(
   },
   (table) => [index().on(table.applicationId)],
 );
+
+/**
+ * A user's own settings, one row per user, written the first time they change anything. A user
+ * with no row has the defaults, so signing up writes nothing here.
+ */
+export const userSettings = pgTable("user_settings", {
+  userId: text()
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** Days of silence before an Application shows the Ghosted label. */
+  ghostedThresholdDays: integer().notNull().default(defaultGhostedThresholdDays),
+  ...timestamps,
+});

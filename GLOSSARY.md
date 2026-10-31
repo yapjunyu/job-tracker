@@ -36,6 +36,10 @@ _Avoid_: Event, transition, update, log entry
 A label on an Application in Applied, Assessment or Interviewing that has had no Status Change for a set number of days (30 by default). It is not a Status and disappears as soon as anything changes.
 _Avoid_: Stale, no response, dead
 
+**Ghosted threshold**:
+How many days of silence count as Ghosted, which each job seeker sets for their own search (30 by default). It is never stored on an Application, so changing it relabels them all at once.
+_Avoid_: Stale window, cutoff, timeout, expiry
+
 ### Hiring process
 
 **Round**:

@@ -5,6 +5,7 @@ import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ApplicationRow } from "@/api/applications";
 import { useChangeStatus } from "@/api/status-changes";
+import { GhostedBadge } from "@/components/ghosted-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { StatusSelect } from "@/components/status-select";
 import {
@@ -205,23 +206,26 @@ export function ApplicationsTable({
               </TableCell>
             )}
             <TableCell className="py-0">
-              {application.pending ? (
-                // Nor can its Status change before there is an Application to record it on.
-                <StatusBadge status={application.status} />
-              ) : (
-                <StatusSelect
-                  triggerRef={(element) => {
-                    if (element) statuses.current.set(application.id, element);
-                    else statuses.current.delete(application.id);
-                  }}
-                  status={application.status}
-                  inTable
-                  label={`Status of ${application.roleTitle} at ${application.company.name}`}
-                  onChange={(status) => {
-                    changeStatus.mutate({ applicationId: application.id, status });
-                  }}
-                />
-              )}
+              <div className="flex items-center gap-1.5">
+                {application.pending ? (
+                  // Nor can its Status change before there is an Application to record it on.
+                  <StatusBadge status={application.status} />
+                ) : (
+                  <StatusSelect
+                    triggerRef={(element) => {
+                      if (element) statuses.current.set(application.id, element);
+                      else statuses.current.delete(application.id);
+                    }}
+                    status={application.status}
+                    inTable
+                    label={`Status of ${application.roleTitle} at ${application.company.name}`}
+                    onChange={(status) => {
+                      changeStatus.mutate({ applicationId: application.id, status });
+                    }}
+                  />
+                )}
+                {application.ghosted && <GhostedBadge since={application.statusChangedAt} />}
+              </div>
             </TableCell>
             <TableCell className="hidden text-muted-foreground md:table-cell">
               {application.source ? sourceLabels[application.source] : "—"}
