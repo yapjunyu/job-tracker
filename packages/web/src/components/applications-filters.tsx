@@ -9,7 +9,7 @@ import {
   Status,
 } from "@job-tracker/shared";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownIcon, ArrowUpIcon, SearchIcon, XIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, GhostIcon, SearchIcon, XIcon } from "lucide-react";
 import type { RefObject } from "react";
 import { companySuggestionsQuery } from "@/api/companies";
 import { Button } from "@/components/ui/button";
@@ -154,6 +154,24 @@ export function ApplicationsFilters({ params, onChange, searchRef }: Application
             }}
           />
         )}
+
+        <Button
+          variant="outline"
+          aria-pressed={params.ghosted === true}
+          className={
+            params.ghosted === true
+              ? "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+              : undefined
+          }
+          onClick={() => {
+            // On, and off again: the two states a job seeker asks for. The API can also
+            // answer with the Applications that are not Ghosted, which nothing asks it for.
+            onChange({ ...params, ghosted: params.ghosted === true ? null : true });
+          }}
+        >
+          <GhostIcon data-icon="inline-start" />
+          Ghosted
+        </Button>
 
         {/* Below `sm` the table has no room for the Source and Last change columns, so their
           headers aren't there to sort by: this is how every column stays reachable there. */}

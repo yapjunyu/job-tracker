@@ -2,6 +2,7 @@ import {
   Application,
   type ApplicationSummary,
   type CompanyWithApplications,
+  isGhosted,
   latestStatusChange,
   type Status,
   type StatusChange,
@@ -15,6 +16,7 @@ import {
 } from "@/api/applications";
 import { failureMessage } from "@/api/failure-message";
 import { applicationsKey, companiesKey } from "@/api/query-keys";
+import { ghostedThresholdIn } from "@/api/settings";
 
 // Changing a Status, or editing or deleting a Status Change, shows the moment the job seeker
 // does it, everywhere the Application shows:
@@ -53,7 +55,7 @@ function restoreQueries(
 function showStatusOnRows(
   queryClient: QueryClient,
   id: string,
-  current: Pick<ApplicationSummary, "status" | "statusChangedAt">,
+  current: Pick<ApplicationSummary, "status" | "statusChangedAt" | "ghosted">,
 ) {
   const withCurrent = <Row extends ApplicationSummary>(row: Row): Row =>
     row.id === id ? { ...row, ...current } : row;
@@ -64,8 +66,15 @@ function showStatusOnRows(
   );
 }
 
-/** The Application with this Status history, in the Status its latest Status Change sets. */
-function withHistory(application: Application, statusChanges: StatusChange[]): Application {
+/**
+ * The Application with this Status history, in the Status its latest Status Change sets, and
+ * Ghosted or not by the same rule and threshold the API would answer with.
+ */
+function withHistory(
+  application: Application,
+  statusChanges: StatusChange[],
+  thresholdDays: number,
+): Application {
   const latest = latestStatusChange(
     statusChanges.map((change) => ({
       ...change,
@@ -73,13 +82,16 @@ function withHistory(application: Application, statusChanges: StatusChange[]): A
       recordedAt: new Date(change.recordedAt),
     })),
   );
+  // An Application never has no Status Changes; the server refuses the delete that would
+  // leave it none, so until it does the Status stays where it was.
+  const status = latest?.status ?? application.status;
+  const statusChangedAt = latest?.occurredAt ?? new Date(application.statusChangedAt);
   return {
     ...application,
     statusChanges,
-    // An Application never has no Status Changes; the server refuses the delete that would
-    // leave it none, so until it does the Status stays where it was.
-    status: latest?.status ?? application.status,
-    statusChangedAt: latest?.occurredAt.toISOString() ?? application.statusChangedAt,
+    status,
+    statusChangedAt: statusChangedAt.toISOString(),
+    ghosted: isGhosted({ status, statusChangedAt }, thresholdDays, new Date()),
   };
 }
 
@@ -92,7 +104,11 @@ function showHistory(
   const detailKey = applicationQuery(id).queryKey;
   const application = queryClient.getQueryData(detailKey);
   if (!application) return;
-  const changed = withHistory(application, change(application.statusChanges));
+  const changed = withHistory(
+    application,
+    change(application.statusChanges),
+    ghostedThresholdIn(queryClient),
+  );
   queryClient.setQueryData(detailKey, changed);
   showStatusOnRows(queryClient, id, changed);
 }
@@ -139,7 +155,12 @@ export function useChangeStatus() {
     onMutate: async ({ applicationId, status }) => {
       const previous = await holdApplicationQueries(queryClient);
       const now = new Date().toISOString();
-      showStatusOnRows(queryClient, applicationId, { status, statusChangedAt: now });
+      // Something has just happened on it, so whatever silence it was in is over.
+      showStatusOnRows(queryClient, applicationId, {
+        status,
+        statusChangedAt: now,
+        ghosted: false,
+      });
       showHistory(queryClient, applicationId, (statusChanges) => [
         // Its id is only a key for the list until the server answers with the real one.
         { id: crypto.randomUUID(), status, occurredAt: now, recordedAt: now },

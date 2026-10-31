@@ -7,6 +7,9 @@ import {
   ApplicationSummary,
   ErrorMessage,
   finalStatuses,
+  ghostableStatuses,
+  ghostedBefore,
+  isGhosted,
   latestStatusChange,
   NewApplication,
   Source,
@@ -17,6 +20,7 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { SignedIn } from "./auth";
 import type { Database } from "./database/database";
 import { applications, companies, statusChanges } from "./database/schema";
+import { ghostedThresholdFor } from "./settings";
 
 export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
@@ -37,8 +41,42 @@ const detailColumns = {
   jobDescription: applications.jobDescription,
 };
 
-function withIsoStatusChangedAt<Row extends { statusChangedAt: Date }>(row: Row) {
-  return { ...row, statusChangedAt: row.statusChangedAt.toISOString() };
+/** The Ghosted rule as one request reads it: this job seeker's threshold, at this moment. */
+interface GhostedReading {
+  thresholdDays: number;
+  now: Date;
+}
+
+/** How the Ghosted rule reads as this request is answered, for the user it answers. */
+async function ghostedReading(database: Database, userId: string): Promise<GhostedReading> {
+  return { thresholdDays: await ghostedThresholdFor(database, userId), now: new Date() };
+}
+
+/**
+ * How an Application leaves the API: the time of its latest Status Change as a string, and the
+ * Ghosted label worked out from it. Ghosted is never stored, so it is decided here on every
+ * read, by the same rule the browser labels a change it is still waiting on the server for.
+ */
+function asRead<Row extends { status: Status; statusChangedAt: Date }>(
+  row: Row,
+  ghosted: GhostedReading,
+) {
+  return {
+    ...row,
+    statusChangedAt: row.statusChangedAt.toISOString(),
+    ghosted: isGhosted(row, ghosted.thresholdDays, ghosted.now),
+  };
+}
+
+/**
+ * The Ghosted rule as the database asks it: waiting on the Company, and quiet since before the
+ * threshold. The moment comes from the same `ghostedBefore` the label goes through, so the
+ * Ghosted filter can't disagree with the labels on the rows it answers with.
+ */
+function hasGoneQuiet(ghosted: GhostedReading): SQL {
+  const before = ghostedBefore(ghosted.thresholdDays, ghosted.now);
+  const waitingOnTheCompany = inArray(applications.currentStatus, [...ghostableStatuses]);
+  return sql`(${waitingOnTheCompany} and ${applications.statusChangedAt} < ${before})`;
 }
 
 /** Matches the user's Company with this name, whatever its letter case. */
@@ -210,12 +248,21 @@ function orderBy(params: ApplicationListParams): SQL[] {
  * Filters combine: an Application has to match all of them, the active-only view included.
  * Asking for a final Status is what `filteredByStatus` turns active-only off for.
  */
-function conditionsFor(params: ApplicationListParams): (SQL | undefined)[] {
+function conditionsFor(
+  params: ApplicationListParams,
+  ghosted: GhostedReading,
+): (SQL | undefined)[] {
   return [
     params.status.length > 0 ? inArray(applications.currentStatus, params.status) : undefined,
     params.activeOnly ? notInArray(applications.currentStatus, [...finalStatuses]) : undefined,
     params.source.length > 0 ? inArray(applications.source, params.source) : undefined,
     params.company.length > 0 ? inArray(applications.companyId, params.company) : undefined,
+    // Ghosted is worked out rather than stored, so the filter is the rule itself, in the query.
+    params.ghosted === null
+      ? undefined
+      : params.ghosted
+        ? hasGoneQuiet(ghosted)
+        : sql`not ${hasGoneQuiet(ghosted)}`,
     // `strpos` rather than `like`, so a `%` or `_` the job seeker types is matched as itself.
     params.search
       ? or(
@@ -236,13 +283,14 @@ export async function listApplications(
   userId: string,
   params: ApplicationListParams,
 ) {
+  const ghosted = await ghostedReading(database, userId);
   const rows = await database
     .select(summaryColumns)
     .from(applications)
     .innerJoin(companies, eq(companies.id, applications.companyId))
-    .where(and(eq(applications.userId, userId), ...conditionsFor(params)))
+    .where(and(eq(applications.userId, userId), ...conditionsFor(params, ghosted)))
     .orderBy(...orderBy(params));
-  return rows.map(withIsoStatusChangedAt);
+  return rows.map((row) => asRead(row, ghosted));
 }
 
 /** `undefined` both for an Application that doesn't exist and for another user's. */
@@ -264,7 +312,7 @@ export async function findApplication(database: Database, userId: string, id: st
     .where(eq(statusChanges.applicationId, id))
     .orderBy(desc(statusChanges.occurredAt), desc(statusChanges.recordedAt));
   return {
-    ...withIsoStatusChangedAt(row),
+    ...asRead(row, await ghostedReading(database, userId)),
     statusChanges: history.map((change) => ({
       ...change,
       occurredAt: change.occurredAt.toISOString(),

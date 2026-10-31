@@ -8,6 +8,7 @@ import { applicationQuery } from "@/api/applications";
 import { useDeleteStatusChange, useEditStatusChange } from "@/api/status-changes";
 import { DeleteApplicationDialog } from "@/components/delete-application-dialog";
 import { EditApplicationDialog } from "@/components/edit-application-dialog";
+import { GhostedBadge } from "@/components/ghosted-badge";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { StatusSelect } from "@/components/status-select";
@@ -37,6 +38,7 @@ function ApplicationDetail() {
         meta={
           <>
             <StatusBadge status={application.status} />
+            {application.ghosted && <GhostedBadge since={application.statusChangedAt} />}
             <span className="text-muted-foreground" aria-hidden>
               ·
             </span>

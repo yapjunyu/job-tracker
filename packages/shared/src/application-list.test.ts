@@ -16,6 +16,7 @@ describe("the table's list parameters", () => {
       source: [],
       company: [],
       activeOnly: true,
+      ghosted: null,
       sort: "statusChangedAt",
       direction: "desc",
     });
@@ -51,6 +52,17 @@ describe("the table's list parameters", () => {
 
   it("shows finished Applications too once active-only is turned off", () => {
     expect(ApplicationListParams.parse({ activeOnly: "false" }).activeOnly).toBe(false);
+  });
+
+  it.each([
+    ["true", true],
+    ["false", false],
+  ] as const)("reads the Ghosted filter asked for as %s", (asked, expected) => {
+    expect(ApplicationListParams.parse({ ghosted: asked }).ghosted).toBe(expected);
+  });
+
+  it("filters on Ghosted neither way round until it is asked for", () => {
+    expect(ApplicationListParams.parse({}).ghosted).toBeNull();
   });
 
   it("ignores the space around a search the job seeker typed", () => {
@@ -128,6 +140,8 @@ describe("whether the table is narrowed down", () => {
     { source: ["referral"] },
     { company: ["4f1e8e1a-0b7e-4a1f-9c3d-2b6a1f0e7d55"] },
     { activeOnly: false },
+    { ghosted: true },
+    { ghosted: false },
   ])("is, once %o is asked for", (asked) => {
     expect(isFiltered({ ...defaultApplicationListParams, ...asked })).toBe(true);
   });
@@ -160,6 +174,7 @@ describe("the list parameters as a query string", () => {
       source: ["linkedin"],
       company: ["4f1e8e1a-0b7e-4a1f-9c3d-2b6a1f0e7d55"],
       activeOnly: false,
+      ghosted: true,
       sort: "company",
       direction: "asc",
     };

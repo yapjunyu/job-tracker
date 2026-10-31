@@ -126,6 +126,7 @@ function asPendingRow(details: NewApplication): ApplicationRow {
     status: details.status,
     source: details.source,
     statusChangedAt: new Date().toISOString(),
+    ghosted: false,
   };
 }
 

@@ -52,3 +52,15 @@ export async function startTestApp(overrides: TestAppOverrides = {}) {
 }
 
 export type TestApp = Awaited<ReturnType<typeof startApp>>;
+
+/**
+ * The app and a connection to the database behind it, for a test that has to seed something no
+ * request can ask for, such as an Application that has been quiet for weeks.
+ */
+export async function startTestAppWithDatabase(overrides: TestAppOverrides = {}) {
+  const databaseUrl = await createTestDatabaseUrl();
+  const app = await startApp(databaseUrl, overrides);
+  const database = createDatabase(databaseUrl);
+  onTestFinished(() => closeDatabase(database));
+  return { app, database };
+}

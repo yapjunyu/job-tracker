@@ -49,6 +49,12 @@ const summaryFields = {
   source: Source.nullable(),
   /** When its latest Status Change happened. */
   statusChangedAt: z.iso.datetime(),
+  /**
+   * Whether the Company has gone quiet on it, by the Ghosted rule and the job seeker's
+   * threshold. Worked out whenever an Application is read and never stored, so it goes the
+   * moment anything about the Application changes.
+   */
+  ghosted: z.boolean(),
 };
 
 /** An Application as a row of the table shows it. */
