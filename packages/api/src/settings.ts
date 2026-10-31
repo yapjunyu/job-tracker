@@ -9,20 +9,12 @@ import { userSettings } from "./database/schema";
  * The user's settings, which are the defaults until they change one: a user who has never
  * been to the Settings page has no row of their own, and signing up writes none.
  */
-async function findSettings(database: Database, userId: string): Promise<UserSettings> {
+export async function findSettings(database: Database, userId: string): Promise<UserSettings> {
   const [settings] = await database
     .select({ ghostedThresholdDays: userSettings.ghostedThresholdDays })
     .from(userSettings)
     .where(eq(userSettings.userId, userId));
   return settings ?? { ghostedThresholdDays: defaultGhostedThresholdDays };
-}
-
-/**
- * How many days of silence this user counts as Ghosted. Every read of an Application asks
- * this, so the label and the Ghosted filter both follow the threshold they set.
- */
-export async function ghostedThresholdFor(database: Database, userId: string): Promise<number> {
-  return (await findSettings(database, userId)).ghostedThresholdDays;
 }
 
 /** Writes the user's settings, creating their row the first time they change anything. */

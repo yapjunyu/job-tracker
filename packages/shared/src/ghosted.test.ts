@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { defaultGhostedThresholdDays, isGhosted } from "./ghosted";
+import { isGhosted } from "./ghosted";
+import { defaultGhostedThresholdDays } from "./settings";
 import type { Status } from "./status";
 
 const now = new Date("2026-03-31T09:00:00Z");

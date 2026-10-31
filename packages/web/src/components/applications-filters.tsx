@@ -17,6 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { sortLabels, sourceLabels, statusLabels } from "@/lib/display";
 
+/** How a filter looks once it is narrowing the table, wherever the bar has one. */
+const narrowing = "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground";
+
 interface FilterSelectProps<Value extends string> {
   /** What the filter is called, shown while nothing is picked. */
   label: string;
@@ -56,11 +59,7 @@ function FilterSelect<Value extends string>({
       <SelectTrigger
         // Named as a filter, so it isn't taken for the Status of a row or a field of a form.
         aria-label={`Filter by ${label}`}
-        className={
-          value.length > 0
-            ? "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-            : undefined
-        }
+        className={value.length > 0 ? narrowing : undefined}
       >
         <span className="truncate">{summary}</span>
       </SelectTrigger>
@@ -158,11 +157,7 @@ export function ApplicationsFilters({ params, onChange, searchRef }: Application
         <Button
           variant="outline"
           aria-pressed={params.ghosted === true}
-          className={
-            params.ghosted === true
-              ? "border-primary bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-              : undefined
-          }
+          className={params.ghosted === true ? narrowing : undefined}
           onClick={() => {
             // On, and off again: the two states a job seeker asks for. The API can also
             // answer with the Applications that are not Ghosted, which nothing asks it for.

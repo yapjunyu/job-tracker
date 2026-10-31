@@ -7,8 +7,9 @@ import { failureMessage } from "@/api/failure-message";
 /** The signed-in job seeker's own settings, which is the Ghosted threshold and nothing else yet. */
 export const settingsQuery = queryOptions({
   queryKey: ["settings"],
-  // Only the Settings page changes these, and it writes what the server answered straight in.
-  staleTime: "static",
+  // The Settings page writes what the server answered straight in, so this is only ever
+  // refetched for a change made on another device, which is worth a few minutes' wait.
+  staleTime: 5 * 60 * 1000,
   queryFn: async (): Promise<UserSettings> => {
     const response = await fetch("/api/settings");
     if (!response.ok) {

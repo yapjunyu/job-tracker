@@ -4,8 +4,12 @@ import { applications, statusChanges } from "../src/database/schema";
 
 const msPerDay = 24 * 60 * 60 * 1000;
 
-export function daysAgo(days: number, now = new Date()): Date {
-  return new Date(now.getTime() - days * msPerDay);
+/**
+ * This many days ago, worked out here rather than with the rule under test, so a test that
+ * seeds silence can still disagree with the rule that reads it.
+ */
+function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * msPerDay);
 }
 
 /**

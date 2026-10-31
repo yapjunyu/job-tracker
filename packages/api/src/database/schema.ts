@@ -130,19 +130,6 @@ export const applications = pgTable(
   (table) => [index().on(table.userId)],
 );
 
-/**
- * A user's own settings, one row per user, written the first time they change anything. A user
- * with no row has the defaults, so signing up writes nothing here.
- */
-export const userSettings = pgTable("user_settings", {
-  userId: text()
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" }),
-  /** Days of silence before an Application shows the Ghosted label. */
-  ghostedThresholdDays: integer().notNull().default(defaultGhostedThresholdDays),
-  ...timestamps,
-});
-
 /** An Application's history. Deleting the Application takes its Status Changes with it. */
 export const statusChanges = pgTable(
   "status_changes",
@@ -159,3 +146,16 @@ export const statusChanges = pgTable(
   },
   (table) => [index().on(table.applicationId)],
 );
+
+/**
+ * A user's own settings, one row per user, written the first time they change anything. A user
+ * with no row has the defaults, so signing up writes nothing here.
+ */
+export const userSettings = pgTable("user_settings", {
+  userId: text()
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** Days of silence before an Application shows the Ghosted label. */
+  ghostedThresholdDays: integer().notNull().default(defaultGhostedThresholdDays),
+  ...timestamps,
+});
