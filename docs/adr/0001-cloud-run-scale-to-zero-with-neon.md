@@ -1,5 +1,8 @@
 # Host on Cloud Run scaled to zero, with Neon Postgres in Singapore
 
+> Superseded by [ADR-0002](0002-singapore-vps-that-pulls-its-own-updates.md). The hosted copy runs
+> on a VPS in Singapore; the Neon database this ADR chose is unchanged.
+
 The app ships as one Docker image that serves both the API and the built React app. The hosted copy runs on Google Cloud Run in `asia-southeast1` (minimum 0 instances, maximum 2) against a Neon free-tier Postgres in `aws-ap-southeast-1`; anyone else runs the same image with docker compose and their own database. We chose this because spending is capped at $10 a month (covered by existing Google Cloud credits), AI providers must always be free, and the data has to be the same on every device. The price is a cold start of a few seconds after about 15 minutes idle.
 
 ## Considered Options

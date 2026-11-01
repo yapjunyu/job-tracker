@@ -39,9 +39,9 @@ data.
 
 ## Operating Context
 
-- The owner's own copy runs on Google Cloud Run scaled to zero, so a cold start is expected on the
-  first visit of a session. The database is a shared cloud Postgres, so the same data appears on
-  every device.
+- The owner's own copy runs always-on on a small VPS in Singapore, so the app itself is never cold.
+  The database is a shared cloud Postgres whose free tier sleeps, so the first query of a session
+  can still wait. The same data appears on every device.
 - Applications arrive from LinkedIn, MyCareersFuture, company career sites, referrals and career
   fairs. The scene is usually a browser with a job posting open in another tab, which is what
   makes paste-and-fill and Ctrl+K matter.
@@ -62,7 +62,7 @@ keyboard navigation over the Applications table; a Company view.
 Status columns, Upcoming view of future Rounds, Rounds with automatic Status advance and undo,
 Ghosted label with a filter and a per-user day threshold plus the Settings screen that threshold
 needs, Ctrl+K command palette for quick add, AI fill from a pasted job description, Google
-sign-in, Cloud Run deploy, GHCR images. The design must have room for these; they are coming into
+sign-in, VPS deploy, GHCR images. The design must have room for these; they are coming into
 it rather than after it.
 
 **Constraints:** pnpm monorepo of `shared` (Zod schemas and domain rules), `api` (Hono) and `web`
