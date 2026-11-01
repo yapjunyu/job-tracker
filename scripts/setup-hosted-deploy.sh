@@ -233,15 +233,20 @@ gh auth status >/dev/null 2>&1 || { warn "gh is not signed in. Run: gh auth logi
 docker info >/dev/null 2>&1 \
   || { warn "Docker isn't running. Start Docker Desktop, then re-run."; exit 1; }
 say ""
-say "Cloud Run needs a billing account even to stay inside the free tier."
-if ! gcloud billing accounts list --format="value(name)" 2>/dev/null | grep -q .; then
-  warn "This account can see no billing account."
-  step "On the page opening now, create one or accept the credits you were granted."
+say "Cloud Run needs an open billing account even to stay inside the free tier."
+if ! gcloud billing accounts list --filter="open=true" --format="value(name)" 2>/dev/null | grep -q .; then
+  warn "There is no open billing account on this login."
+  note "Reopen a closed one rather than add another: an individual payments profile"
+  note "allows only one, and its type can't be changed once it exists."
+  step "On the page opening now, reopen the closed account, or create one."
   open_url "https://console.cloud.google.com/billing"
-  pause "Press Enter once a billing account is listed there."
+  pause "Press Enter once an account is listed there as open."
 fi
 gcloud billing accounts list --format="table(name,displayName,open)" || true
 ask GCP_BILLING_ACCOUNT "Billing account id (the 0X0X0X-0X0X0X-0X0X0X part):"
+# A closed account is accepted by this prompt but rejected by the link in stage 2, which is a
+# far more confusing place to find out.
+gcloud billing accounts describe "$GCP_BILLING_ACCOUNT" --format="value(open)" 2>/dev/null   | grep -qi true   || { warn "$GCP_BILLING_ACCOUNT is closed or unreadable. Reopen it, then re-run."; exit 1; }
 write_env GCP_BILLING_ACCOUNT "$GCP_BILLING_ACCOUNT"
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
