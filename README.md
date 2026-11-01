@@ -85,6 +85,18 @@ git push origin v1.2.0
 
 The very first publish creates the package as private: make it public once, in the package's settings on GitHub, or nobody can pull it.
 
+## The hosted copy
+
+The maintainer's copy runs on Cloud Run in `asia-southeast1` against a free Neon Postgres in Singapore, and every merge to `main` deploys it (`.github/workflows/deploy.yml`, ADR-0001). The workflow signs in with Workload Identity Federation and reads three repository variables — `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER` and `GCP_DEPLOY_SERVICE_ACCOUNT`. No service-account key exists anywhere.
+
+Everything the workflow needs — the project, the database, the secrets, the image repository and its clean-up policy, the service itself, the federation and the spend cap — is set up by one wizard:
+
+```bash
+./scripts/setup-hosted-deploy.sh
+```
+
+It walks through the parts only a human can do, opening each page and capturing what you copy back. Stop with Ctrl-C and re-run it any time: the values it has already saved are offered as defaults. The database URL and the auth secret live in Secret Manager, and the copy it keeps for re-runs is written to `.env.hosted-deploy`, which git ignores.
+
 ## Checks
 
 | Command                 | What it runs                                                                |

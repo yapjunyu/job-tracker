@@ -1,0 +1,61 @@
+name: Deploy
+
+# Every merge to main ships to the maintainer's hosted copy on Cloud Run (ADR-0001).
+# `scripts/setup-hosted-deploy.sh` creates the project, the Artifact Registry repository, the
+# Cloud Run service and the Workload Identity Federation this workflow signs in with, and sets
+# the three repository variables below. No service-account key is ever stored.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  # One deploy at a time, so an older image can't land on top of a newer one.
+  group: deploy
+
+permissions:
+  contents: read
+  # Lets the runner mint the OIDC token Workload Identity Federation exchanges for Google
+  # credentials. Without it the auth step has nothing to present.
+  id-token: write
+
+jobs:
+  test:
+    name: Checks
+    # The same checks every pull request runs, so a merge can't ship something CI would reject.
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Build and deploy
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      REGION: asia-southeast1
+      SERVICE: job-tracker
+      IMAGE: asia-southeast1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/job-tracker/app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      # Points Docker at Artifact Registry through the credentials the auth step wrote.
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - uses: docker/setup-buildx-action@v4
+      - name: Build and push the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          # The commit, so a revision can always be traced back to what built it. Artifact
+          # Registry's clean-up policy keeps only the last 3.
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # Only the image changes. Scaling, the startup probe, the secrets and the invite list stay
+      # as the setup wizard configured them, so a deploy can't quietly reset them.
+      - uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}:${{ github.sha }}

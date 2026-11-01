@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+  # Deploy runs the same checks before it ships a merge to main. See deploy.yml.
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.ref }}
