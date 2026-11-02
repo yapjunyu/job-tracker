@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignedOutRouteImport } from './routes/_signed-out'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppBoardRouteImport } from './routes/_app/board'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as SignedOutSignInRouteImport } from './routes/_signed-out/sign-in'
 import { Route as SignedOutSignUpRouteImport } from './routes/_signed-out/sign-up'
@@ -29,6 +30,11 @@ const SignedOutRoute = SignedOutRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBoardRoute = AppBoardRouteImport.update({
+  id: '/board',
+  path: '/board',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -60,6 +66,7 @@ const AppCompaniesCompanyIdRoute = AppCompaniesCompanyIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/board': typeof AppBoardRoute
   '/settings': typeof AppSettingsRoute
   '/sign-in': typeof SignedOutSignInRoute
   '/sign-up': typeof SignedOutSignUpRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
+  '/board': typeof AppBoardRoute
   '/settings': typeof AppSettingsRoute
   '/sign-in': typeof SignedOutSignInRoute
   '/sign-up': typeof SignedOutSignUpRoute
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_signed-out': typeof SignedOutRouteWithChildren
+  '/_app/board': typeof AppBoardRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_signed-out/sign-in': typeof SignedOutSignInRoute
   '/_signed-out/sign-up': typeof SignedOutSignUpRoute
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/board'
     | '/settings'
     | '/sign-in'
     | '/sign-up'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/board'
     | '/settings'
     | '/sign-in'
     | '/sign-up'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_signed-out'
+    | '/_app/board'
     | '/_app/settings'
     | '/_signed-out/sign-in'
     | '/_signed-out/sign-up'
@@ -140,6 +152,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/board': {
+      id: '/_app/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof AppBoardRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings': {
@@ -181,6 +200,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppBoardRoute: typeof AppBoardRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppApplicationsApplicationIdRoute: typeof AppApplicationsApplicationIdRoute
@@ -188,6 +208,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBoardRoute: AppBoardRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
   AppApplicationsApplicationIdRoute: AppApplicationsApplicationIdRoute,

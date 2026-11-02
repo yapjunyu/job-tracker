@@ -19,19 +19,19 @@ interface NavigationItem {
   label: string;
   Icon: ComponentType<{ className?: string }>;
   /** Where it goes, once there is somewhere for it to go. */
-  to?: "/" | "/settings";
+  to?: "/" | "/board" | "/settings";
   /** What it will hold, shown while the view it names is still being built. */
   waiting?: string;
 }
 
 /**
- * The app's views. The two that aren't built yet keep their place in the order so the
+ * The app's views. The one that isn't built yet keeps its place in the order so the
  * navigation doesn't rearrange itself as each one lands, and say so rather than looking
  * broken.
  */
 const navigation: NavigationItem[] = [
   { label: "Applications", Icon: LayoutListIcon, to: "/" },
-  { label: "Board", Icon: SquareKanbanIcon, waiting: "A column per Status, drag to move" },
+  { label: "Board", Icon: SquareKanbanIcon, to: "/board" },
   { label: "Upcoming", Icon: CalendarClockIcon, waiting: "Every Round ahead, in date order" },
   { label: "Settings", Icon: SettingsIcon, to: "/settings" },
 ];

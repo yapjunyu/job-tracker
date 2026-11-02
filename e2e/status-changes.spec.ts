@@ -1,4 +1,11 @@
-import { type Browser, type BrowserContext, expect, test } from "@playwright/test";
+import {
+  type Browser,
+  type BrowserContext,
+  expect,
+  type Locator,
+  type Page,
+  test,
+} from "@playwright/test";
 import { signUp } from "./accounts";
 
 // One job seeker for the whole file, since sign-ups are rate limited per address. Its tests
@@ -66,17 +73,41 @@ test("a Status change the server refuses goes back, with a message saying why", 
   await expect(status).toContainText("Saved");
 });
 
+/**
+ * Drags the middle of one thing onto the middle of another. The board's drag sensor watches
+ * pointer moves and only starts once the pointer has travelled, so the move is made in steps
+ * rather than in one jump.
+ */
+async function drag(page: Page, from: Locator, onto: Locator) {
+  const start = await from.boundingBox();
+  if (!start) throw new Error("There is nothing on screen to drag.");
+  const middleOf = async () => {
+    const box = await onto.boundingBox();
+    if (!box) throw new Error("There is nowhere on screen to drop.");
+    return [box.x + box.width / 2, box.y + box.height / 2] as const;
+  };
+
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(...(await middleOf()), { steps: 12 });
+  // The board can scroll under the card on the way over, so it is aimed once more at where
+  // the column has ended up before the card is let go.
+  await page.mouse.move(...(await middleOf()));
+  await page.mouse.up();
+}
+
 test("a job seeker drags a card to another column on the board", async ({ browser }) => {
   const { page, status } = await addApplication(browser, "Platform Intern");
-  await page.getByRole("button", { name: "Board" }).click();
+  const toBoard = page.getByRole("link", { name: "Board" });
+  await toBoard.click();
   const interviewing = page.getByRole("region", { name: "Interviewing" });
 
-  await page.getByRole("article").filter({ hasText: "Platform Intern" }).dragTo(interviewing);
+  await drag(page, page.getByRole("article").filter({ hasText: "Platform Intern" }), interviewing);
 
   await expect(interviewing.getByText("Platform Intern")).toBeVisible();
   await expect(status).toContainText("Interviewing");
   // The drag recorded a Status Change, so a fresh load from the server still has it.
   await page.reload();
-  await page.getByRole("button", { name: "Board" }).click();
+  await toBoard.click();
   await expect(interviewing.getByText("Platform Intern")).toBeVisible();
 });
