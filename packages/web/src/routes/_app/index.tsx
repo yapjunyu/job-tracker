@@ -6,9 +6,10 @@ import {
 } from "@job-tracker/shared";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { PlusIcon, SearchXIcon } from "lucide-react";
+import { LayoutGridIcon, PlusIcon, SearchXIcon, TableIcon } from "lucide-react";
 import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { applicationsQuery } from "@/api/applications";
+import { ApplicationsBoard } from "@/components/applications-board";
 import { ApplicationsFilters } from "@/components/applications-filters";
 import { ApplicationsSummary } from "@/components/applications-summary";
 import { ApplicationsTable, type TableSorting } from "@/components/applications-table";
@@ -26,6 +27,7 @@ const everyApplication = { ...defaultApplicationListParams, activeOnly: false };
 
 function Home() {
   const [params, setParams] = useState<ApplicationListParams>(defaultApplicationListParams);
+  const [board, setBoard] = useState(false);
   const openQuickAdd = useQuickAdd();
   // Typing stays instant; the list catches up with it.
   const search = useDeferredValue(params.search);
@@ -59,10 +61,26 @@ function Home() {
       <PageHeader
         title="Applications"
         actions={
-          <Button size="sm" onClick={openQuickAdd}>
-            <PlusIcon data-icon="inline-start" />
-            Add Application
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setBoard((showing) => !showing);
+              }}
+            >
+              {board ? (
+                <TableIcon data-icon="inline-start" />
+              ) : (
+                <LayoutGridIcon data-icon="inline-start" />
+              )}
+              {board ? "Table" : "Board"}
+            </Button>
+            <Button size="sm" onClick={openQuickAdd}>
+              <PlusIcon data-icon="inline-start" />
+              Add Application
+            </Button>
+          </>
         }
       >
         {all.data && all.data.length > 0 && (
@@ -102,7 +120,13 @@ function Home() {
                 detail="Try a different search, or clear the filters above to see everything again."
               />
             )}
-            {rows && rows.length > 0 && <ApplicationsTable applications={rows} sorting={sorting} />}
+            {rows &&
+              rows.length > 0 &&
+              (board ? (
+                <ApplicationsBoard applications={rows} />
+              ) : (
+                <ApplicationsTable applications={rows} sorting={sorting} />
+              ))}
           </div>
         </div>
       )}

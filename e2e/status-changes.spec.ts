@@ -65,3 +65,18 @@ test("a Status change the server refuses goes back, with a message saying why", 
   await expect(page.getByText("Something went wrong.")).toBeVisible();
   await expect(status).toContainText("Saved");
 });
+
+test("a job seeker drags a card to another column on the board", async ({ browser }) => {
+  const { page, status } = await addApplication(browser, "Platform Intern");
+  await page.getByRole("button", { name: "Board" }).click();
+  const interviewing = page.getByRole("region", { name: "Interviewing" });
+
+  await page.getByRole("article").filter({ hasText: "Platform Intern" }).dragTo(interviewing);
+
+  await expect(interviewing.getByText("Platform Intern")).toBeVisible();
+  await expect(status).toContainText("Interviewing");
+  // The drag recorded a Status Change, so a fresh load from the server still has it.
+  await page.reload();
+  await page.getByRole("button", { name: "Board" }).click();
+  await expect(interviewing.getByText("Platform Intern")).toBeVisible();
+});
